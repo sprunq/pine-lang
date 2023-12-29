@@ -12,7 +12,7 @@
 
 Pine aims to be an expressive, high-level imperative programming language designed for general-purpose computing.
 
-## Features
+## Features and Goals
 
 🖥 **C Backend:** With a C backend, Pine ensures compatibility with the powerful C libraries, making it easy to integrate with existing C libraries and tools.
 
