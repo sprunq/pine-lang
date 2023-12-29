@@ -61,7 +61,7 @@ impl<'a> Compiler<'a> {
                 self.context.build_dir.join("*.h"),
                 self.context.build_dir.join("*.c"),
             ],
-            optimization_level: OptLevel::Release,
+            optimization_level: OptLevel::Debug,
         };
 
         let compiler_runner = Gcc::new();
