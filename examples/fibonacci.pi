@@ -1,0 +1,45 @@
+fun fib_iterative(n : i64) -> i64 {
+    let a : i64 = 0;
+    let b : i64 = 1;
+    let fib : i64 = 0;
+
+    if (n == 0) {
+        return 0;
+    }
+    if (n == 1) {
+       return 1;
+    }
+
+    let i : i64 = 2;
+    loop {
+        if (i <= n) {
+            i = i + 1;
+            fib = a + b;
+            a = b;
+            b = fib;
+        } else {
+            break;
+        }
+    }
+    return fib;
+}
+
+fun fib_recursive(n : i64) -> i64 {
+    if (n <= 1) {
+        return n;
+    }
+    return fib_recursive(n-1) + fib_recursive(n-2);
+}
+
+fun main() -> i64 {
+    let i : i64 = 1;
+    loop {
+        if (i > 40) {
+            break;
+        }
+        // fib_iterative or fib_recursive
+        let result : i64 = fib_iterative(i);
+        print_int(result);
+        i = i + 1;
+    }
+}

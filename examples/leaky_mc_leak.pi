@@ -1,0 +1,23 @@
+type Test = {
+    a : u64,
+    b : u64,
+    c : u64,
+    d : u64,
+    e : u64,
+}
+
+fun main() -> () {
+    let i : u64 = 0;
+    loop {
+        let obj : Test = Test {
+            a : 0, b : 0, c : 0, d : 0, e : 0
+        };
+
+        obj.a = 200;
+        if (i % 1000000 == 0) {
+            print_int(i);
+            print_int(obj.a);
+        }
+        i = i + 1;
+    }
+}

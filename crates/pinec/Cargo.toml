@@ -1,0 +1,11 @@
+[package]
+name = "pinec"
+version = "0.1.0"
+edition = "2021"
+description = ""
+
+[dependencies]
+base = { path = "../base" }
+driver = { path = "../driver" }
+clap = { version = "4.2.1", features = ["derive"] }
+codespan-reporting = "0.9.5"

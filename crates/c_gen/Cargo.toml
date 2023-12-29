@@ -1,0 +1,10 @@
+[package]
+name = "c_gen"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+base = { path = "../base" }
+syntax = { path = "../syntax" }
+
+[build-dependencies] 
