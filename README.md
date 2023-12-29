@@ -19,3 +19,23 @@ Pine aims to be an expressive, high-level imperative programming language design
 ♻ **Garbage Collected:** Pine features a garbage collector to handle memory automatically, allowing you to focus on your code.
 
 🚀 **High-Level Features:** Pine brings high-level features to the table, including sum types, robust type inference, and iterators.
+
+## Roadmap
+
+🪴 Language Design
+
+🪴 Parser
+
+🌱 Syntax Analysis
+
+🌱 Typechecking
+
+🪴 Lowering
+
+🪴 C Backend
+
+🌲 C Garbage Collector
+
+🌱 Standard Library
+
+_🌱 Todo | 🪴 In Progress | 🌲 Done_
