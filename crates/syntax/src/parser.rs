@@ -1,52 +1,78 @@
-use crate::{ast::Program, grammar, lexer::Lexer, token::Token};
+use crate::{ast::Program, lexer::Lexer, token::Token};
 use base::{located::Located, source_id::SourceId};
-use lalrpop_util::ParseError as LalrpopParseError;
-use messages::{lexer::LexerError, message::Message, parser::ParserError};
+use messages::{message::Message, parser::ParserError};
+use std::sync::mpsc::Sender;
 
-pub type Parser = grammar::ProgramParser;
+pub struct Parser<'a> {
+    source_id: SourceId,
+    message_sender: Sender<Message>,
+    lexer: Lexer<'a>,
 
-impl Parser {
-    pub fn parse_file(source: SourceId, file: &str) -> Result<Program, Message> {
-        let lexer = Lexer::new(source, file);
-        let parser = Parser::new();
-        let parse_res = parser.parse(source, lexer);
+    current: Located<Token>,
+    pending: Option<Located<Token>>,
+}
 
-        parse_res.map_err(|e| Self::uplift_parse_err(source, file, e))
+impl<'a> Parser<'a> {
+    pub fn new(source_id: SourceId, content: &'a str, message_sender: Sender<Message>) -> Self {
+        let lexer = Lexer::new(source_id, content);
+        let p0 = Located::new(source_id, 0..0, Token::Error);
+
+        let mut parser = Self {
+            source_id,
+            message_sender,
+            lexer,
+            current: p0,
+            pending: None,
+        };
+
+        parser.next().expect("hm");
+        parser.next().expect("hmm");
+
+        parser
     }
 
-    /// Converts a lalrpop `ParseError` into our internal representation of an error.
-    fn uplift_parse_err(
-        source: SourceId,
-        file: &str,
-        err: LalrpopParseError<usize, Token, LexerError>,
-    ) -> Message {
-        match err {
-            LalrpopParseError::ExtraToken {
-                token: (start, _, end),
-            } => ParserError::ExtraToken {
-                token: Located::new(source, start..end, file[start..end].to_string()),
-            }
-            .into(),
-            LalrpopParseError::InvalidToken { location } => ParserError::InvalidToken {
-                location: Located::empty(source, location..location + 1),
-            }
-            .into(),
-            LalrpopParseError::UnrecognizedEOF { location, expected } => {
-                ParserError::UnrecognizedEOF {
-                    location: Located::empty(source, location..location + 1),
-                    expected,
-                }
-                .into()
-            }
-            LalrpopParseError::UnrecognizedToken {
-                token: (start, _, end),
-                expected,
-            } => ParserError::UnrecognizedToken {
-                token: Located::new(source, start..end, file[start..end].to_string()),
-                expected,
-            }
-            .into(),
-            LalrpopParseError::User { error } => error.into(),
+    fn next(&mut self) -> Result<(), ()> {
+        if let Some(token) = self.pending.take() {
+            self.current = token;
         }
+
+        match self.lexer.next() {
+            Some(Err(e)) => {
+                self.send_message(e);
+                Err(())
+            }
+            Some(Ok(token)) => {
+                self.pending = Some(token);
+                Ok(())
+            }
+            None => {
+                self.pending = None;
+                Ok(())
+            }
+        }
+    }
+
+    fn expect(&mut self, token: Token) -> Result<Located<Token>, ()> {
+        if self.current.value == token {
+            let t = self.current.clone();
+            self.next()?;
+            Ok(t)
+        } else {
+            let t = self.current.clone();
+            self.send_message(ParserError::UnrecognizedToken {
+                token: t.as_str_loc(),
+                expected: token.to_string(),
+            });
+            Err(())
+        }
+    }
+
+    fn send_message<M: Into<Message>>(&self, message: M) {
+        let m = message.into();
+        self.message_sender.send(m).unwrap();
+    }
+
+    pub fn parse(&mut self) -> Result<Program, ()> {
+        todo!()
     }
 }

@@ -15,7 +15,7 @@ pub enum ParserError {
     },
     UnrecognizedToken {
         token: Located<String>,
-        expected: Vec<String>,
+        expected: String,
     },
 }
 
@@ -81,7 +81,7 @@ impl ParserError {
                 vec![format!("expected: {}", one_of(expected))]
             }
             ParserError::UnrecognizedToken { token: _, expected } => {
-                vec![format!("expected: {}", one_of(expected))]
+                vec![format!("expected: {}", expected)]
             }
         }
     }

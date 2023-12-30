@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{fmt::Display, ops::Range};
 
 use crate::source_id::SourceId;
 
@@ -19,6 +19,18 @@ impl<T> Located<T> {
     }
 }
 
+impl<S> Located<S>
+where
+    S: Into<String> + Clone,
+{
+    pub fn as_str_loc(&self) -> Located<String> {
+        let span = self.span.clone();
+        let source = self.source;
+        let value = self.value.clone().into();
+        Located::new(source, span, value)
+    }
+}
+
 impl Located<()> {
     pub fn empty(source: SourceId, span: Range<usize>) -> Self {
         Self {
@@ -26,5 +38,20 @@ impl Located<()> {
             source,
             value: (),
         }
+    }
+}
+
+impl Into<Range<usize>> for Located<()> {
+    fn into(self) -> Range<usize> {
+        self.span
+    }
+}
+
+impl<T> Display for Located<T>
+where
+    T: Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.value.fmt(f)
     }
 }

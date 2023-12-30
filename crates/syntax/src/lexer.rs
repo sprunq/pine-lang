@@ -7,7 +7,7 @@ use messages::lexer::LexerError;
 pub struct Lexer<'a> {
     source_id: SourceId,
     inner: logos::Lexer<'a, Token>,
-    pending: Option<(usize, Token, usize)>,
+    pending: Option<Located<Token>>,
 }
 
 impl<'a> Lexer<'a> {
@@ -21,7 +21,7 @@ impl<'a> Lexer<'a> {
 }
 
 impl<'a> Iterator for Lexer<'a> {
-    type Item = Result<(usize, Token, usize), LexerError>;
+    type Item = Result<Located<Token>, LexerError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(token) = self.pending.take() {
@@ -45,7 +45,8 @@ impl<'a> Iterator for Lexer<'a> {
                     if span.end == span_new.start {
                         span.end = span_new.end;
                     } else {
-                        self.pending = Some((span_new.start, token, span_new.end));
+                        let t = Located::new(self.source_id, span.clone(), token);
+                        self.pending = Some(t);
                         break;
                     }
                 }
@@ -59,8 +60,8 @@ impl<'a> Iterator for Lexer<'a> {
                 }))
             }
             token => {
-                let span = self.inner.span();
-                Some(Ok((span.start, token, span.end)))
+                let t = Located::new(self.source_id, self.inner.span().clone(), token);
+                Some(Ok(t))
             }
         }
     }

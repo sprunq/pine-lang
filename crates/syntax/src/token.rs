@@ -1,4 +1,6 @@
+use base::located::Located;
 use logos::Logos;
+use std::fmt::Display;
 use std::num::{ParseFloatError, ParseIntError};
 
 #[derive(Clone, Debug, Logos, PartialEq)]
@@ -153,4 +155,68 @@ fn lex_string(lexer: &mut logos::Lexer<Token>) -> String {
 fn lex_identifier(lexer: &mut logos::Lexer<Token>) -> String {
     let slice = lexer.slice();
     slice.to_string()
+}
+
+impl Into<String> for Token {
+    fn into(self) -> String {
+        self.to_string()
+    }
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use Token::*;
+        match self {
+            LtParen => write!(f, "("),
+            RtParen => write!(f, ")"),
+            LtBrace => write!(f, "{{"),
+            RtBrace => write!(f, "}}"),
+            Comma => write!(f, ","),
+            Dot => write!(f, "."),
+            Minus => write!(f, "-"),
+            Plus => write!(f, "+"),
+            Semicolon => write!(f, ";"),
+            Slash => write!(f, "/"),
+            Modulo => write!(f, "%"),
+            Asterisk => write!(f, "*"),
+            Colon => write!(f, ":"),
+            ArrowRight => write!(f, "->"),
+            Bang => write!(f, "!"),
+            BangEqual => write!(f, "!="),
+            Equal => write!(f, "="),
+            EqualEqual => write!(f, "=="),
+            Greater => write!(f, ">"),
+            GreaterEqual => write!(f, ">="),
+            Less => write!(f, "<"),
+            LessEqual => write!(f, "<="),
+            Identifier(s) => write!(f, "{}", s),
+            String(s) => write!(f, "\"{}\"", s),
+            Integer(i) => write!(f, "{}", i),
+            Float(fl) => write!(f, "{}", fl),
+            And => write!(f, "and"),
+            Type => write!(f, "type"),
+            Else => write!(f, "else"),
+            False => write!(f, "false"),
+            Fun => write!(f, "fun"),
+            If => write!(f, "if"),
+            Or => write!(f, "or"),
+            Return => write!(f, "return"),
+            TSelf => write!(f, "self"),
+            True => write!(f, "true"),
+            Let => write!(f, "let"),
+            Loop => write!(f, "loop"),
+            Break => write!(f, "break"),
+            TyBool => write!(f, "bool"),
+            TyI8 => write!(f, "i8"),
+            TyI32 => write!(f, "i32"),
+            TyI64 => write!(f, "i64"),
+            TyU8 => write!(f, "u8"),
+            TyU32 => write!(f, "u32"),
+            TyU64 => write!(f, "u64"),
+            TyF32 => write!(f, "f32"),
+            TyF64 => write!(f, "f64"),
+            TyStr => write!(f, "str"),
+            Error => write!(f, "error"),
+        }
+    }
 }

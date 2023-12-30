@@ -6,10 +6,8 @@ edition = "2021"
 [dependencies]
 base = { path = "../base" }
 messages = { path = "../messages" }
-lalrpop-util = "0.19.6"
 logos = "0.12.1"
 
 [build-dependencies]
 logos = "0.12.1"
 build-deps = "0.1.4"
-lalrpop = { version = "0.19.1", default-features = false }

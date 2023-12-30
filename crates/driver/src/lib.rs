@@ -28,13 +28,8 @@ impl<'a> Compiler<'a> {
         let source_id = SourceId::from_path(&self.context.build_pkg);
 
         let file_content = self.context.file_cache.fetch(source_id).unwrap();
-        let parsed = match Parser::parse_file(source_id, file_content) {
-            Ok(parsed) => parsed,
-            Err(e) => {
-                message_sender.send(e).expect("Failed to send message");
-                return;
-            }
-        };
+        let mut parser = Parser::new(source_id, &file_content, message_sender);
+        let parsed = parser.parse().unwrap();
 
         if self.context.emit_irs {
             self.write_parsed_to_file(&parsed);

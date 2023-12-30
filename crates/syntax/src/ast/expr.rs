@@ -23,10 +23,22 @@ pub struct ExprStructureInit {
     pub members: Vec<(Identifier, ExprS)>,
 }
 
+impl ExprStructureInit {
+    pub fn new(name: Identifier, members: Vec<(Identifier, ExprS)>) -> Self {
+        Self { name, members }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExprAssign {
     pub var: ExprS,
     pub value: ExprS,
+}
+
+impl ExprAssign {
+    pub fn new(var: ExprS, value: ExprS) -> Self {
+        Self { var, value }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -35,10 +47,25 @@ pub struct ExprCall {
     pub args: Vec<ExprS>,
 }
 
+impl ExprCall {
+    pub fn new(callee: ExprS, args: Vec<ExprS>) -> Self {
+        Self { callee, args }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExprMemberAccess {
     pub object: ExprS,
     pub member_name: Identifier,
+}
+
+impl ExprMemberAccess {
+    pub fn new(object: ExprS, member_name: Identifier) -> Self {
+        Self {
+            object,
+            member_name,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -57,10 +84,22 @@ pub struct ExprInfix {
     pub rt: ExprS,
 }
 
+impl ExprInfix {
+    pub fn new(lt: ExprS, op: OpInfix, rt: ExprS) -> Self {
+        Self { lt, op, rt }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExprPrefix {
     pub op: OpPrefix,
     pub rt: ExprS,
+}
+
+impl ExprPrefix {
+    pub fn new(op: OpPrefix, rt: ExprS) -> Self {
+        Self { op, rt }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -68,9 +107,21 @@ pub struct ExprVar {
     pub var: Identifier,
 }
 
+impl ExprVar {
+    pub fn new(var: Identifier) -> Self {
+        Self { var }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Identifier {
     pub name: String,
+}
+
+impl Identifier {
+    pub fn new(name: String) -> Self {
+        Self { name }
+    }
 }
 
 impl AsRef<str> for Identifier {
