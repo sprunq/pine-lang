@@ -114,7 +114,6 @@ impl AstToCAst {
             Stmt::Loop(s) => vec![self.build_loop(s).into()],
             Stmt::Empty(_) => vec![CStmt::Empty],
             Stmt::VariableDeclaration(let_stmt) => self.build_variable_declaration(let_stmt),
-            Stmt::Error => unreachable!(),
         }
     }
 

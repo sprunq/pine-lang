@@ -15,7 +15,7 @@ impl Parser {
     }
 
     /// Converts a lalrpop `ParseError` into our internal representation of an error.
-    fn uplift_parse_err(
+    pub fn uplift_parse_err(
         source: SourceId,
         file: &str,
         err: LalrpopParseError<usize, Token, LexerError>,

@@ -71,76 +71,92 @@ extern {
 }
 
 
-pub Program: Program = <stmts:DeclS*> => Program { <> };
+// --------------------------------------------------------------------------------------------------
+//                                          Helpers
+// --------------------------------------------------------------------------------------------------
 
-// Declarations
-TypeS = Located<Type>;
-DeclS = Located<Decl>;
+// Parses an object of type T, and returns a Located<T>
+Located<T>: Located<T> = {
+    <start: @L> <data: T> <end: @R> => Located::new(file_id, start..end, data),
+};
 
-Decl = { DeclStruct, DeclFun }
+// Parses a comma separated list of T, and returns a Vec<T>
+Comma<T>: Vec<T> = { 
+    <mut v:(<T> ",")*> <e:T?> => match e { 
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};
+
+
+// --------------------------------------------------------------------------------------------------
+//                                          Declarations
+// --------------------------------------------------------------------------------------------------
+
+pub Program: Program = <stmts:Located<Decl>*> => Program { <> };
+
+Decl : Declaration = { 
+    DeclStruct, 
+    DeclFun 
+}
 
 DeclStruct: Declaration = "type" <name:Identifier> "=" "{" <members:Comma<TypedParam>> "}" => Declaration::TypeObject(TypeObject { <> });
 DeclFun: Declaration = "fun" <function:Function> => Declaration::Fun(<>);
 
-// Statements
+
+// --------------------------------------------------------------------------------------------------
+//                                          Statements
+// --------------------------------------------------------------------------------------------------
+
 Stmt: Stmt = {
     StmtVarDecl,
-    StmtOpen,
-    StmtClosed,
-    StmtEmpty,
-    <e:!> => {
-        Stmt::Error
-    },
-}
-
-StmtVarDecl: Stmt = "let" <var:Identifier> ":" <ty:Located<Type>> "=" <value:ExprS> ";" => Stmt::VariableDeclaration(VariableDeclaration { <> });
-
-StmtEmpty: Stmt =<l:@L> ";" <r:@R>  => Stmt::Empty(StmtEmpty{ span : Located::empty(file_id, l..r)});
-
-// https://en.wikipedia.org/wiki/Dangling_else#Avoiding_the_conflict_in_LR_parsers
-StmtOpen: Stmt = {
-    "if" "(" <cond:ExprS> ")" <then:Located<Stmt>> => Stmt::If(Box::new(StmtIf { <>, else_: None })),
-    
-    "if" "(" <cond:ExprS> ")" <then:Located<StmtClosed>> "else" <else_:Located<StmtOpen>> =>
-        Stmt::If(Box::new(StmtIf { cond, then, else_: Some(else_) })),
-    
-    "loop" <body:Located<StmtOpen>> => Stmt::Loop(Box::new(StmtLoop{ <> })),
-}
-
-StmtClosed: Stmt = {
-    "if" "(" <cond:ExprS> ")" <then:Located<StmtClosed>> "else" <else_:Located<StmtClosed>> => 
-        Stmt::If(Box::new(StmtIf { cond, then, else_: Some(else_) })),
-    
-    "loop" <body:Located<StmtClosed>> => Stmt::Loop(Box::new(StmtLoop { <> })),
-    StmtSimple,
-}
-
-StmtSimple = {
+    StmtIf,
+    StmtLoop,
     StmtBlock,
     StmtExpr,
     StmtReturn,
     StmtBreak,
+    StmtEmpty,
+}
+
+StmtVarDecl: Stmt = "let" <var:Identifier> ":" <ty:Located<Type>> "=" <value:Located<Expr>> ";" => Stmt::VariableDeclaration(VariableDeclaration { <> });
+
+StmtEmpty: Stmt = <l:@L> ";" <r:@R>  => Stmt::Empty(StmtEmpty{ span : Located::empty(file_id, l..r)});
+
+StmtLoop: Stmt = StmtLoopInternal => Stmt::Loop(Box::new(<>));
+StmtLoopInternal: StmtLoop = "loop" <body:Located<StmtBlock>> => StmtLoop { <> };
+
+StmtIf: Stmt = {
+    StmtIfInternal => Stmt::If(Box::new(<>)),
+}
+
+StmtIfInternal: StmtIf = {
+    "if" "(" <cond:Located<Expr>> ")" <then:Located<StmtBlock>> => StmtIf { <>, else_: None },
+    "if" "(" <cond:Located<Expr>> ")" <then:Located<StmtBlock>> "else" <else_:Located<StmtBlock>> => StmtIf { cond, then, else_: Some(else_) },
 }
 
 StmtBlock: Stmt = StmtBlockInternal => Stmt::Block(<>);
 
-StmtBlockInternal: StmtBlock = "{" <stmts:StmtS*> "}" => StmtBlock { <> };
+StmtBlockInternal: StmtBlock = "{" <stmts:Located<Stmt>*> "}" => StmtBlock { <> };
 
-StmtExpr: Stmt = <value:ExprS> ";" => Stmt::Expr(StmtExpr { <> });
+StmtExpr: Stmt = <value:Located<Expr>> ";" => Stmt::Expr(StmtExpr { <> });
 
-StmtReturn: Stmt = "return" <value:ExprS?> ";" => Stmt::Return(StmtReturn { <> });
+StmtReturn: Stmt = "return" <value:Located<Expr>?> ";" => Stmt::Return(StmtReturn { <> });
 
-StmtBreak: Stmt =  <l:@L> "break" <r:@R>  ";" => Stmt::Break(StmtBreak { span : Located::empty(file_id, l..r) });
+StmtBreak: Stmt =  <l:@L> "break" ";" <r:@R> => Stmt::Break(StmtBreak { span : Located::empty(file_id, l..r) });
 
 
-// Expressions
-ExprS = Located<Expr>;
-StmtS = Located<Stmt>;
+// --------------------------------------------------------------------------------------------------
+//                                          Expressions
+// --------------------------------------------------------------------------------------------------
 
 Expr = ExprAssign;
 
 ExprAssign = {
-    <var:Located<ExprCall>> "=" <value:ExprS> => Expr::Assign(Box::new(ExprAssign { <> })),
+    <var:Located<ExprCall>> "=" <value:Located<Expr>> => Expr::Assign(Box::new(ExprAssign { <> })),
     ExprLogicOr,
 }
 
@@ -194,66 +210,43 @@ OpPrefix: OpPrefix = {
 }
 
 ExprCall: Expr = {
-    <callee:Located<ExprCall>> "(" <args:Args> ")" => Expr::Call(Box::new(ExprCall { <> })),
+    <callee:Located<ExprCall>> "(" <args:Comma<Located<Expr>>> ")" => Expr::Call(Box::new(ExprCall { <> })),
     <object:Located<ExprCall>> "." <member_name:Identifier> => Expr::MemberAccess(Box::new(ExprMemberAccess { <> })),
     ExprPrimary,
 }
 
 ExprPrimary: Expr = {
+    StructInit,
+    LiteralExpr,
+    ExprVar,
+    "(" <Expr> ")",
+}
+
+StructInit: Expr = <name:Identifier> "{" <members: Comma<StructMemberInitPair>> "}" => Expr::StructureInit(Box::new(ExprStructureInit { <> }));
+
+StructMemberInitPair: (Identifier, Located<Expr>) = { <name:Identifier> ":" <value:Located<Expr>> => (<>) }
+
+ExprVar: Expr = <var:Identifier> => Expr::Var(ExprVar { <> });
+
+Function: StmtFun = <name:Identifier> "(" <params:Comma<TypedParam>> ")" "->" <ret_ty:Located<Type>>  <body:StmtBlockInternal> => StmtFun { <> };
+
+Identifier : Identifier = <name:identifier> => Identifier { <> };
+
+LiteralExpr : Expr = {
     "false" => Expr::Literal(ExprLiteral::Bool(false)),
     "true" => Expr::Literal(ExprLiteral::Bool(true)),
     string => Expr::Literal(ExprLiteral::String(<>)),
     integer => Expr::Literal(ExprLiteral::Integer(<>)),
     float => Expr::Literal(ExprLiteral::Float(<>)),
-    <name:Identifier> "{" <members: StructMemberInit> "}" => Expr::StructureInit(Box::new(ExprStructureInit { <> })),
-    ExprVar,
-    "(" <Expr> ")",
 }
 
-StructMemberInit: Vec<(Identifier, ExprS)> = {
-    <first:StructMemberInitPair> <mut members:("," <StructMemberInitPair>)*> => {
-        members.insert(0, first);
-        members
-    },
-    () => Vec::new(),
-}
 
-StructMemberInitPair: (Identifier, ExprS) = { <name:Identifier> ":" <value:ExprS> => (<>) }
-
-ExprVar: Expr = <var:Identifier> => Expr::Var(ExprVar { <> });
-
-Function: StmtFun = <name:Identifier> "(" <params:Params> ")" "->" <ret_ty:Located<Type>>  <body:StmtBlockInternal> => StmtFun { <> };
-
-Params: Vec<TypedParam> = {
-    <first:TypedParam> <mut params:("," <TypedParam>)*> => {
-        params.insert(0, first);
-        params
-    },
-    () => Vec::new(),
-};
-
-Args: Vec<ExprS> = {
-    <first:ExprS> <mut args:("," <ExprS>)*> => {
-        args.insert(0, first);
-        args
-    },
-    () => Vec::new(),
-}
-
-Identifier : Identifier = <name:identifier> => Identifier { <> };
-
-// Types
+// --------------------------------------------------------------------------------------------------
+//                                             Types
+// --------------------------------------------------------------------------------------------------
 
 TypedParam : TypedParam  = {
     <name:Located<Identifier>> ":" <ty:Located<Type>> => TypedParam { <> },
-}
-
-Types: Vec<TypeS> = {
-    <first:TypeS> <mut types:("," <TypeS>)*> => {
-        types.insert(0, first);
-        types
-    },
-    () => Vec::new(),
 }
 
 Type : Type = {
@@ -270,19 +263,3 @@ Type : Type = {
     "str" => Type::String,
     <identifier> => Type::Struct(<>),
 }
-
-// Utilities
-
-Located<T>: Located<T> = {
-    <start: @L> <data: T> <end: @R> => Located::new(file_id, start..end, data),
-};
-
-Comma<T>: Vec<T> = { 
-    <mut v:(<T> ",")*> <e:T?> => match e { 
-        None => v,
-        Some(e) => {
-            v.push(e);
-            v
-        }
-    }
-};

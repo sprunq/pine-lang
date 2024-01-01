@@ -1,10 +1,8 @@
 /target
 Cargo.lock
 /logs
-exec.exe
-file.ll
 /build
 /.build
+/.testfiles
 /.idea
-parsed.txt
-.vscode/settings.json
+/.vscode

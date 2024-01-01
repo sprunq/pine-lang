@@ -18,7 +18,6 @@ pub enum Stmt {
     VariableDeclaration(VariableDeclaration),
     Loop(Box<StmtLoop>),
     Empty(StmtEmpty),
-    Error,
 }
 
 #[derive(Clone, Debug, PartialEq)]
