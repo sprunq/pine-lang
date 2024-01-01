@@ -31,7 +31,7 @@ impl Parser {
                 location: Located::empty(source, location..location + 1),
             }
             .into(),
-            LalrpopParseError::UnrecognizedEOF { location, expected } => {
+            LalrpopParseError::UnrecognizedEof { location, expected } => {
                 ParserError::UnrecognizedEOF {
                     location: Located::empty(source, location..location + 1),
                     expected,

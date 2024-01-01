@@ -18,13 +18,6 @@ pub enum Stmt {
     VariableDeclaration(VariableDeclaration),
     Loop(Box<StmtLoop>),
     Empty(StmtEmpty),
-    Assign(Box<StmtAssign>),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct StmtAssign {
-    pub var: Identifier,
-    pub value: ExprS,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -71,7 +64,7 @@ pub struct StmtBreak {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct VariableDeclaration {
-    pub var: Identifier,
+    pub var: Located<Identifier>,
     pub ty: TypeS,
     pub value: ExprS,
 }

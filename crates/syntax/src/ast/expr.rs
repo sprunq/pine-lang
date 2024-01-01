@@ -16,6 +16,13 @@ pub enum Expr {
     Prefix(Box<ExprPrefix>),
     Infix(Box<ExprInfix>),
     StructureInit(ExprStructureInit),
+    Assign(Box<ExprAssign>),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ExprAssign {
+    pub var: ExprS,
+    pub value: ExprS,
 }
 
 #[derive(Clone, Debug, PartialEq)]

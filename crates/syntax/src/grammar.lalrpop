@@ -122,11 +122,9 @@ Stmt: Stmt = {
     StmtReturn,
     StmtBreak,
     StmtEmpty,
-    StmtAssign,
 }
 
-StmtAssign : Stmt = <var:Identifier> "=" <value:Pos<Expr>> => Stmt::Assign(Box::new(StmtAssign { <> }));
-StmtVarDecl: Stmt = "let" <var:Identifier> ":" <ty:Pos<Type>> "=" <value:Pos<Expr>> ";" => Stmt::VariableDeclaration(VariableDeclaration { <> });
+StmtVarDecl: Stmt = "let" <var:Pos<Identifier>> ":" <ty:Pos<Type>> "=" <value:Pos<Expr>> ";" => Stmt::VariableDeclaration(VariableDeclaration { <> });
 StmtEmpty: Stmt = <l:@L> ";" <r:@R>  => Stmt::Empty(StmtEmpty{ span : Located::empty(file_id, l..r)});
 StmtExpr: Stmt = <value:Pos<Expr>> ";" => Stmt::Expr(StmtExpr { <> });
 StmtReturn: Stmt = "return" <value:Pos<Expr>?> ";" => Stmt::Return(StmtReturn { <> });
@@ -138,70 +136,72 @@ StmtLoopInner: StmtLoop = "loop" <body:Pos<StmtBlock>> => StmtLoop { <> };
 StmtBlock: Stmt = StmtBlockInner => Stmt::Block(<>);
 StmtBlockInner: StmtBlock = "{" <stmts:Pos<Stmt>*> "}" => StmtBlock { <> };
 
-StmtIf: Stmt = {
-    StmtIfInner => Stmt::If(Box::new(<>)),
-}
+StmtIf: Stmt = StmtIfInner => Stmt::If(Box::new(<>));
 StmtIfInner: StmtIf = "if" "(" <cond:Pos<Expr>> ")" <then:Pos<StmtBlock>> <optional_else : ("else" <Pos<StmtBlock>>)?> => { 
     match optional_else {
         Some(els) => StmtIf { cond, then, else_: Some(els) },
         None => StmtIf { cond, then, else_: None },
     }
 };
-    
 
 
 // --------------------------------------------------------------------------------------------------
 //                                          Expressions
 // --------------------------------------------------------------------------------------------------
 
+// https://github.com/lalrpop/lalrpop/issues/596
+ExprReset = <Expr>;
 
 Expr : Expr = {
+    #[precedence(level="0")]
+    StructInit,
+
     #[precedence(level="1")]
-    <t: ExprPrimary> => t,
+    LiteralExpr,
+    <var:Identifier> => Expr::Var(ExprVar { <> }),
+    "(" <ExprReset> ")" => <>,
 
     #[precedence(level="2")] #[assoc(side="left")]
-    ExprCall,
-    ExprMemberAccess,
+    <callee:Pos<Expr>> "(" <args:Comma<Pos<ExprReset>>> ")" => Expr::Call(Box::new(ExprCall { <> })),
+    <object:Pos<Expr>> "." <member_name:Pos<Identifier>> => Expr::MemberAccess(Box::new(ExprMemberAccess { <> })),
     
     #[precedence(level="3")] #[assoc(side="left")]
-    ExprPrefix<OpNegate, Expr>,
-    ExprPrefix<OpNot, Expr>,
+    <op:OpNegate> <rt:Pos<Expr>> => Expr::Prefix(Box::new(ExprPrefix { <> })),
+    <op:OpNot>    <rt:Pos<Expr>> => Expr::Prefix(Box::new(ExprPrefix { <> })),
 
     #[precedence(level="4")] #[assoc(side="left")]
-    ExprInfix<Expr, OpMultiply, Expr>,
-    ExprInfix<Expr, OpDivide, Expr>,
+    <lt:Pos<Expr>> <op:OpMultiply>      <rt:Pos<Expr>> => Expr::Infix(Box::new(ExprInfix { <> })),
+    <lt:Pos<Expr>> <op:OpDivide>        <rt:Pos<Expr>> => Expr::Infix(Box::new(ExprInfix { <> })),
+    <lt:Pos<Expr>> <op:OpModulo>        <rt:Pos<Expr>> => Expr::Infix(Box::new(ExprInfix { <> })),
 
     #[precedence(level="5")] #[assoc(side="left")]
-    ExprInfix<Expr, OpAdd, Expr>,
-    ExprInfix<Expr, OpSubtract, Expr>,
+    <lt:Pos<Expr>> <op:OpAdd>           <rt:Pos<Expr>> => Expr::Infix(Box::new(ExprInfix { <> })),
+    <lt:Pos<Expr>> <op:OpSubtract>      <rt:Pos<Expr>> => Expr::Infix(Box::new(ExprInfix { <> })),
 
     #[precedence(level="6")] #[assoc(side="left")]
-    ExprInfix<Expr, OpLess, Expr>,
-    ExprInfix<Expr, OpLessEqual, Expr>,
-    ExprInfix<Expr, OpGreater, Expr>,
-    ExprInfix<Expr, OpGreaterEqual, Expr>,
+    <lt:Pos<Expr>> <op:OpLess>          <rt:Pos<Expr>> => Expr::Infix(Box::new(ExprInfix { <> })),
+    <lt:Pos<Expr>> <op:OpLessEqual>     <rt:Pos<Expr>> => Expr::Infix(Box::new(ExprInfix { <> })),
+    <lt:Pos<Expr>> <op:OpGreater>       <rt:Pos<Expr>> => Expr::Infix(Box::new(ExprInfix { <> })),
+    <lt:Pos<Expr>> <op:OpGreaterEqual>  <rt:Pos<Expr>> => Expr::Infix(Box::new(ExprInfix { <> })),
 
     #[precedence(level="7")] #[assoc(side="left")]
-    ExprInfix<Expr, OpEqual, Expr>,
-    ExprInfix<Expr, OpNotEqual, Expr>,
+    <lt:Pos<Expr>> <op:OpEqual>         <rt:Pos<Expr>> => Expr::Infix(Box::new(ExprInfix { <> })),
+    <lt:Pos<Expr>> <op:OpNotEqual>      <rt:Pos<Expr>> => Expr::Infix(Box::new(ExprInfix { <> })),
 
     #[precedence(level="8")] #[assoc(side="left")]
-    ExprInfix<Expr, OpLogicAnd, Expr>,
+    <lt:Pos<Expr>> <op:OpLogicAnd>      <rt:Pos<Expr>> => Expr::Infix(Box::new(ExprInfix { <> })),
 
     #[precedence(level="9")] #[assoc(side="left")]
-    ExprInfix<Expr, OpLogicOr, Expr>,
+    <lt:Pos<Expr>> <op:OpLogicOr>       <rt:Pos<Expr>> => Expr::Infix(Box::new(ExprInfix { <> })),
+
+    #[precedence(level="10")] #[assoc(side="right")]
+    <var:Pos<Expr>> "=" <value:Pos<Expr>> => Expr::Assign(Box::new(ExprAssign { <> }))
 }
 
 
-ExprCall: Expr = <callee:Pos<Expr>> "(" <args:Comma<Pos<Expr>>> ")" => Expr::Call(Box::new(ExprCall { <> }));
-ExprMemberAccess: Expr = <object:Pos<Expr>> "." <member_name:Pos<Identifier>> => Expr::MemberAccess(Box::new(ExprMemberAccess { <> }));
-
-ExprInfix<Lt, Op, Rt>: Expr = <lt:Pos<Lt>> <op:Op> <rt:Pos<Rt>> => Expr::Infix(Box::new(ExprInfix { <> }));
-ExprPrefix<Op, Rt>: Expr = <op:Op> <rt:Pos<Rt>> => Expr::Prefix(Box::new(ExprPrefix { <> }));
-
 OpLogicOr: OpInfix = "or" => OpInfix::LogicOr;
 OpLogicAnd: OpInfix = "and" => OpInfix::LogicAnd;
-OpEqual : OpInfix = "=" => OpInfix::Equal;
+OpEqual : OpInfix = "==" => OpInfix::Equal;
 OpNotEqual : OpInfix = "!=" => OpInfix::NotEqual;
 OpGreater : OpInfix = ">" => OpInfix::Greater;
 OpGreaterEqual : OpInfix = ">=" => OpInfix::GreaterEqual;
@@ -215,16 +215,9 @@ OpModulo : OpInfix = "%" => OpInfix::Modulo;
 OpNegate: OpPrefix = "-" => OpPrefix::Negate;
 OpNot: OpPrefix = "!" => OpPrefix::Not;
 
-ExprPrimary: Expr = {
-    StructInit,
-    LiteralExpr,
-    ExprVariable,
-    "(" <Expr> ")",
-}
-
 StructInit: Expr = <name:Identifier> "{" <members: Comma<StructMemberInitPair>> "}" => Expr::StructureInit(ExprStructureInit { <> });
 StructMemberInitPair: (Identifier, Located<Expr>) = { <name:Identifier> ":" <value:Pos<Expr>> => (<>) }
-ExprVariable: Expr = <var:Identifier> => Expr::Var(ExprVar { <> });
+
 Identifier : Identifier = <name:identifier> => Identifier { <> };
 
 LiteralExpr : Expr = {

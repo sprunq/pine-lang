@@ -114,10 +114,6 @@ impl AstToCAst {
             Stmt::Loop(s) => vec![self.build_loop(s).into()],
             Stmt::Empty(_) => vec![CStmt::Empty],
             Stmt::VariableDeclaration(let_stmt) => self.build_variable_declaration(let_stmt),
-            Stmt::Assign(ass) => {
-                let ass_expr = self.build_assign(ass).into();
-                vec![CStmt::Expr(ass_expr)]
-            }
         }
     }
 
@@ -335,11 +331,11 @@ impl AstToCAst {
     /// x = 1;
     fn build_variable_declaration(&mut self, let_stmt: &VariableDeclaration) -> Vec<CStmt> {
         if let Expr::StructureInit(si) = &let_stmt.value.value {
-            let name = self.build_identifier(&let_stmt.var);
+            let name = self.build_identifier(&let_stmt.var.value);
             return self.build_structure_init(&name, si);
         }
 
-        let name = CIdentifier::new(&let_stmt.var.name);
+        let name = CIdentifier::new(&let_stmt.var.value.name);
         let ty = self.build_ty(&let_stmt.ty.value);
         let decl = CVariableDeclaration::new(name.clone(), ty).into();
         let value = self.build_expr(&let_stmt.value.value);
@@ -373,6 +369,7 @@ impl AstToCAst {
             Expr::Infix(e) => self.build_infix(e).into(),
             Expr::MemberAccess(e) => self.build_get(e).into(),
             Expr::StructureInit(_) => unreachable!(),
+            Expr::Assign(ass) => self.build_assign(ass).into(),
         }
     }
 
@@ -400,7 +397,7 @@ impl AstToCAst {
         }
     }
 
-    fn build_assign(&mut self, assign: &ast::stmt::StmtAssign) -> CAssignment {
+    fn build_assign(&mut self, assign: &ast::expr::ExprAssign) -> CAssignment {
         let ident = self.build_expr(&assign.var.value);
         let ass = CAssignmentOperator::Assign;
         let value = self.build_expr(&assign.value.value);
