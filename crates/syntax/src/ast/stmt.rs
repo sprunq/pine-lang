@@ -4,24 +4,31 @@ use super::{expr::Identifier, ty::TypedParam, ExprS, StmtS, TypeS};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Declaration {
-    Fun(StmtFun),
+    Fun(FunctionDeclaration),
     TypeObject(TypeObject),
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Stmt {
-    Block(StmtBlock),
+    Block(Block),
     Expr(StmtExpr),
-    If(Box<StmtIf>),
-    Return(StmtReturn),
-    Break(StmtBreak),
+    If(Box<IfElse>),
+    Return(Return),
+    Break(Break),
     VariableDeclaration(VariableDeclaration),
-    Loop(Box<StmtLoop>),
-    Empty(StmtEmpty),
+    Loop(Box<Loop>),
+    Empty(Empty),
+    Assign(Box<Assign>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct StmtBlock {
+pub struct Assign {
+    pub var: ExprS,
+    pub value: ExprS,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Block {
     pub stmts: Vec<StmtS>,
 }
 
@@ -38,27 +45,27 @@ pub struct StmtExpr {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct StmtFun {
+pub struct FunctionDeclaration {
     pub name: Identifier,
     pub params: Vec<TypedParam>,
     pub ret_ty: TypeS,
-    pub body: StmtBlock,
+    pub body: Block,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct StmtIf {
+pub struct IfElse {
     pub cond: ExprS,
     pub then: StmtS,
     pub else_: Option<StmtS>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct StmtReturn {
+pub struct Return {
     pub value: Option<ExprS>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct StmtBreak {
+pub struct Break {
     pub span: Located<()>,
 }
 
@@ -70,11 +77,11 @@ pub struct VariableDeclaration {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct StmtLoop {
+pub struct Loop {
     pub body: StmtS,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct StmtEmpty {
+pub struct Empty {
     pub span: Located<()>,
 }

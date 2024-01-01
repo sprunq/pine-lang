@@ -9,7 +9,6 @@ use super::{
 pub enum Expr {
     Var(ExprVar),
     Literal(ExprLiteral),
-    Assign(Box<ExprAssign>),
     Call(Box<ExprCall>),
     MemberAccess(Box<ExprMemberAccess>),
     Prefix(Box<ExprPrefix>),
@@ -21,12 +20,6 @@ pub enum Expr {
 pub struct ExprStructureInit {
     pub name: Identifier,
     pub members: Vec<(Identifier, ExprS)>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ExprAssign {
-    pub var: ExprS,
-    pub value: ExprS,
 }
 
 #[derive(Clone, Debug, PartialEq)]

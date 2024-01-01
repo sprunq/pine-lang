@@ -99,15 +99,16 @@ Comma<T>: Vec<T> = {
 pub Program: Program = <stmts:Located<Declaration>*> => Program { <> };
 
 Declaration : Declaration = { 
-    DeclTypeObject, 
-    DeclFunction
+    DeclarationTypeObject, 
+    DeclarationFunction
 }
 
-DeclTypeObject: Declaration = <decl:DeclTypeObjectInner> => Declaration::TypeObject(<>);
-DeclTypeObjectInner: TypeObject = "type" <name:Identifier> "=" "{" <members:Comma<TypedParam>> "}" => TypeObject { <> };
+DeclarationTypeObject: Declaration = TypeObject => Declaration::TypeObject(<>);
+TypeObject: TypeObject = "type" <name:Identifier> "=" "{" <members:Comma<TypedParam>> "}" => TypeObject { <> };
 
-DeclFunction: Declaration = <decl:DeclFunctionInner> => Declaration::Fun(<>);
-DeclFunctionInner: StmtFun = "fun" <name:Identifier> "(" <params:Comma<TypedParam>> ")" "->" <ret_ty:Located<Type>>  <body:StmtBlockInner> => StmtFun { <> };
+DeclarationFunction: Declaration = FunctionDeclaration => Declaration::Fun(<>);
+FunctionDeclaration: FunctionDeclaration = "fun" <name:Identifier> "(" <params:Comma<TypedParam>> ")" "->" <ret_ty:Located<Type>>  <body:Block> => FunctionDeclaration { <> };
+
 
 // --------------------------------------------------------------------------------------------------
 //                                          Statements
@@ -115,6 +116,7 @@ DeclFunctionInner: StmtFun = "fun" <name:Identifier> "(" <params:Comma<TypedPara
 
 Stmt: Stmt = {
     StmtVarDecl,
+    StmtAssign,
     StmtIf,
     StmtLoop,
     StmtBlock,
@@ -124,114 +126,81 @@ Stmt: Stmt = {
     StmtEmpty,
 }
 
-StmtVarDecl: Stmt = "let" <var:Identifier> ":" <ty:Located<Type>> "=" <value:Located<Expr>> ";" => Stmt::VariableDeclaration(VariableDeclaration { <> });
-StmtEmpty: Stmt = <l:@L> ";" <r:@R>  => Stmt::Empty(StmtEmpty{ span : Located::empty(file_id, l..r)});
-StmtExpr: Stmt = <value:Located<Expr>> ";" => Stmt::Expr(StmtExpr { <> });
-StmtReturn: Stmt = "return" <value:Located<Expr>?> ";" => Stmt::Return(StmtReturn { <> });
-StmtBreak: Stmt =  <l:@L> "break" ";" <r:@R> => Stmt::Break(StmtBreak { span : Located::empty(file_id, l..r) });
+StmtAssign : Stmt = Assign => Stmt::Assign(Box::new( <> ));
+Assign : Assign = <var:Located<Expr1>> "=" <value:Located<Expr>> ";" => Assign { <> };
 
-StmtLoop: Stmt = StmtLoopInner => Stmt::Loop(Box::new(<>));
-StmtLoopInner: StmtLoop = "loop" <body:Located<StmtBlock>> => StmtLoop { <> };
+StmtVarDecl: Stmt = VariableDeclaration => Stmt::VariableDeclaration( <> );
+VariableDeclaration: VariableDeclaration = "let" <var:Identifier> ":" <ty:Located<Type>> "=" <value:Located<Expr>> ";" => VariableDeclaration { <> };
 
-StmtBlock: Stmt = StmtBlockInner => Stmt::Block(<>);
-StmtBlockInner: StmtBlock = "{" <stmts:Located<Stmt>*> "}" => StmtBlock { <> };
+StmtLoop: Stmt = Loop => Stmt::Loop(Box::new(<>));
+Loop: Loop = "loop" <body:Located<StmtBlock>> => Loop { <> };
 
-StmtIf: Stmt = {
-    StmtIfInner => Stmt::If(Box::new(<>)),
-}
-StmtIfInner: StmtIf = "if" "(" <cond:Located<Expr>> ")" <then:Located<StmtBlock>> <optional_else : ("else" <Located<StmtBlock>>)?> => { 
+StmtBlock: Stmt = Block => Stmt::Block(<>);
+Block:  Block = "{" <stmts:Located<Stmt>*> "}" => Block { <> };
+
+StmtIf: Stmt = IfElse => Stmt::If(Box::new(<>));
+IfElse: IfElse = "if" "(" <cond:Located<Expr>> ")" <then:Located<StmtBlock>> <optional_else : ("else" <Located<StmtBlock>>)?> => { 
     match optional_else {
-        Some(els) => StmtIf { cond, then, else_: Some(els) },
-        None => StmtIf { cond, then, else_: None },
+        Some(els) => IfElse { cond, then, else_: Some(els) },
+        None => IfElse { cond, then, else_: None },
     }
 };
-    
 
+StmtEmpty:  Stmt = <l:@L> ";" <r:@R>  => Stmt::Empty(Empty { span : Located::empty(file_id, l..r)});
+StmtExpr:   Stmt = <value:Located<Expr>> ";" => Stmt::Expr(StmtExpr { <> });
+StmtReturn: Stmt = "return" <value:Located<Expr>?> ";" => Stmt::Return(Return { <> });
+StmtBreak:  Stmt =  <l:@L> "break" ";" <r:@R> => Stmt::Break(Break { span : Located::empty(file_id, l..r) });
+    
 
 // --------------------------------------------------------------------------------------------------
 //                                          Expressions
 // --------------------------------------------------------------------------------------------------
 
-Expr : Expr = {
-    ExprAssign,
-    ExprLogicOr,
+Expr : Expr = Expr8;
+
+Expr8 = TierInfix<Expr8, OpLogicOr,     Expr7>;
+Expr7 = TierInfix<Expr7, OpLogicAnd,    Expr6>;
+Expr6 = TierInfix<Expr6, OpEquality,    Expr5>;
+Expr5 = TierInfix<Expr5, OpComparison,  Expr4>;
+Expr4 = TierInfix<Expr4, OpTerm,        Expr3>;
+Expr3 = TierInfix<Expr3, OpFactor,      Expr2>;
+Expr2 = TierPrefix<OpPrefix,            Expr1>;
+
+Expr1: Expr = {
+    ExprFunctionCall,
+    ExprMemberAccess,
+    Expr0,
 }
 
-ExprAssign : Expr = <var:Located<ExprCall>> "=" <value:Located<Expr>> => Expr::Assign(Box::new(ExprAssign { <> }));
-
-ExprLogicOr = ExprInfix<ExprLogicOr, OpLogicOr, ExprLogicAnd>;
-ExprLogicAnd = ExprInfix<ExprLogicAnd, OpLogicAnd, ExprEquality>;
-ExprEquality = ExprInfix<ExprEquality, OpEquality, ExprComparison>;
-ExprComparison = ExprInfix<ExprComparison, OpComparison, ExprTerm>;
-ExprTerm = ExprInfix<ExprTerm, OpTerm, ExprFactor>;
-ExprFactor = ExprInfix<ExprFactor, OpFactor, ExprPrefix>;
-
-OpLogicOr: OpInfix = "or" => OpInfix::LogicOr;
-
-OpLogicAnd: OpInfix = "and" => OpInfix::LogicAnd;
-
-OpEquality: OpInfix = {
-    "==" => OpInfix::Equal,
-    "!=" => OpInfix::NotEqual,
-}
-
-OpComparison: OpInfix = {
-    ">" => OpInfix::Greater,
-    ">=" => OpInfix::GreaterEqual,
-    "<" => OpInfix::Less,
-    "<=" => OpInfix::LessEqual,
-}
-
-OpTerm: OpInfix = {
-    "+" => OpInfix::Add,
-    "-" => OpInfix::Subtract,
-}
-
-OpFactor: OpInfix = {
-    "*" => OpInfix::Multiply,
-    "/" => OpInfix::Divide,
-    "%" => OpInfix::Modulo,
-}
-
-ExprInfix<Lt, Op, Rt>: Expr = {
-    <lt:Located<Lt>> <op:Op> <rt:Located<Rt>> => Expr::Infix(Box::new(ExprInfix { <> })),
-    Rt,
-}
-
-ExprPrefix: Expr = {
-    <op:OpPrefix> <rt:Located<ExprPrefix>> => Expr::Prefix(Box::new(ExprPrefix { <> })),
-    ExprCall,
-}
-
-OpPrefix: OpPrefix = {
-    "-" => OpPrefix::Negate,
-    "!" => OpPrefix::Not,
-}
-
-ExprCall: Expr = {
-    <callee:Located<ExprCall>> "(" <args:Comma<Located<Expr>>> ")" => Expr::Call(Box::new(ExprCall { <> })),
-    <object:Located<ExprCall>> "." <member_name:Identifier> => Expr::MemberAccess(Box::new(ExprMemberAccess { <> })),
-    ExprPrimary,
-}
-
-ExprPrimary: Expr = {
-    StructInit,
-    LiteralExpr,
+Expr0: Expr = {
+    ExprStructureInit,
+    ExprLiteral,
     ExprVariable,
     "(" <Expr> ")",
 }
 
-StructInit: Expr = <name:Identifier> "{" <members: Comma<StructMemberInitPair>> "}" => Expr::StructureInit(ExprStructureInit { <> });
-StructMemberInitPair: (Identifier, Located<Expr>) = { <name:Identifier> ":" <value:Located<Expr>> => (<>) }
-ExprVariable: Expr = <var:Identifier> => Expr::Var(ExprVar { <> });
-Identifier : Identifier = <name:identifier> => Identifier { <> };
+ExprMemberAccess: Expr = MemberAccess => Expr::MemberAccess(Box::new( <> ));
+MemberAccess : ExprMemberAccess = <object:Located<Expr1>> "." <member_name:Identifier> => ExprMemberAccess { <> };
 
-LiteralExpr : Expr = {
-    "false" => Expr::Literal(ExprLiteral::Bool(false)),
-    "true" => Expr::Literal(ExprLiteral::Bool(true)),
-    string => Expr::Literal(ExprLiteral::String(<>)),
-    integer => Expr::Literal(ExprLiteral::Integer(<>)),
-    float => Expr::Literal(ExprLiteral::Float(<>)),
+ExprFunctionCall: Expr = FunctionCall => Expr::Call(Box::new( <> ));
+FunctionCall : ExprCall = <callee:Located<Expr1>> "(" <args:Comma<Located<Expr>>> ")" => ExprCall { <> };
+
+ExprStructureInit: Expr = StructInit => Expr::StructureInit( <> );
+StructInit : ExprStructureInit = <name:Identifier> "{" <members: Comma<StructMemberInitPair>> "}" => ExprStructureInit { <> };
+
+ExprVariable: Expr = Variable => Expr::Var( <> );
+Variable : ExprVar = <var:Identifier> => ExprVar { <> };
+
+Identifier : Identifier = <name:identifier> => Identifier { <> };
+StructMemberInitPair: (Identifier, Located<Expr>) = { <name:Identifier> ":" <value:Located<Expr>> => (<>) }
+
+ExprLiteral : Expr = Literal => Expr::Literal(<>);
+Literal : ExprLiteral = {
+    "false" => ExprLiteral::Bool(false),
+    "true" => ExprLiteral::Bool(true),
+    string => ExprLiteral::String(<>),
+    integer => ExprLiteral::Integer(<>),
+    float => ExprLiteral::Float(<>),
 }
 
 
@@ -239,21 +208,41 @@ LiteralExpr : Expr = {
 //                                             Types
 // --------------------------------------------------------------------------------------------------
 
-TypedParam : TypedParam  = {
-    <name:Located<Identifier>> ":" <ty:Located<Type>> => TypedParam { <> },
-}
+TypedParam : TypedParam  = <name:Located<Identifier>> ":" <ty:Located<Type>> => TypedParam { <> };
 
 Type : Type = {
-    "(" ")" => Type::Unit,
-    "bool" => Type::Bool,
-    "i8" => Type::I8,
-    "i32" => Type::I32,
-    "i64" => Type::I64,
-    "u8" => Type::U8,
-    "u32" => Type::U32,
-    "u64" => Type::U64,
-    "f32" => Type::F32,
-    "f64" => Type::F64,
-    "str" => Type::String,
+    "(" ")" =>  Type::Unit,
+    "bool" =>   Type::Bool,
+    "i8" =>     Type::I8,
+    "i32" =>    Type::I32,
+    "i64" =>    Type::I64,
+    "u8" =>     Type::U8,
+    "u32" =>    Type::U32,
+    "u64" =>    Type::U64,
+    "f32" =>    Type::F32,
+    "f64" =>    Type::F64,
+    "str" =>    Type::String,
     <identifier> => Type::Struct(<>),
+}
+
+
+// --------------------------------------------------------------------------------------------------
+//                                             Operators
+// --------------------------------------------------------------------------------------------------
+OpLogicOr: OpInfix = "or" => OpInfix::LogicOr;
+OpLogicAnd: OpInfix = "and" => OpInfix::LogicAnd;
+OpEquality: OpInfix = { "==" => OpInfix::Equal, "!=" => OpInfix::NotEqual }
+OpComparison: OpInfix = { ">" => OpInfix::Greater, ">=" => OpInfix::GreaterEqual, "<" => OpInfix::Less, "<=" => OpInfix::LessEqual }
+OpTerm: OpInfix = { "+" => OpInfix::Add, "-" => OpInfix::Subtract }
+OpFactor: OpInfix = { "*" => OpInfix::Multiply, "/" => OpInfix::Divide, "%" => OpInfix::Modulo}
+OpPrefix: OpPrefix = { "-" => OpPrefix::Negate, "!" => OpPrefix::Not }
+
+TierInfix<Lt, Op, Rt>: Expr = {
+    <lt:Located<Lt>> <op:Op> <rt:Located<Rt>> => Expr::Infix(Box::new(ExprInfix { <> })),
+    Rt,
+}
+
+TierPrefix<Op, Rt>: Expr = {
+    <op:Op> <rt:Located<Rt>> => Expr::Prefix(Box::new(ExprPrefix { <> })),
+    Rt,
 }

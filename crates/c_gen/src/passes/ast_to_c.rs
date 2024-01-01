@@ -114,6 +114,10 @@ impl AstToCAst {
             Stmt::Loop(s) => vec![self.build_loop(s).into()],
             Stmt::Empty(_) => vec![CStmt::Empty],
             Stmt::VariableDeclaration(let_stmt) => self.build_variable_declaration(let_stmt),
+            Stmt::Assign(ass) => {
+                let ass = CExpr::Assignment(self.build_assign(ass)).into();
+                vec![ass]
+            }
         }
     }
 
@@ -207,7 +211,7 @@ impl AstToCAst {
         CTypedParam::new(name, ty)
     }
 
-    fn build_block(&mut self, block: &StmtBlock) -> CBlockStmt {
+    fn build_block(&mut self, block: &Block) -> CBlockStmt {
         let mut stmts = Vec::new();
         for stmt in &block.stmts {
             let s = self.build_stmt(&stmt.value);
@@ -216,7 +220,7 @@ impl AstToCAst {
         CBlockStmt::new(stmts)
     }
 
-    fn build_function_declaration(&mut self, fun: &StmtFun) -> CFunctionDeclaration {
+    fn build_function_declaration(&mut self, fun: &FunctionDeclaration) -> CFunctionDeclaration {
         let name = if fun.name.as_ref() == "main" {
             INTERNAL_MAIN.to_string()
         } else {
@@ -239,7 +243,7 @@ impl AstToCAst {
         c_params
     }
 
-    fn build_if(&mut self, if_stmt: &StmtIf) -> CIfStmt {
+    fn build_if(&mut self, if_stmt: &IfElse) -> CIfStmt {
         let cond = self.build_expr(&if_stmt.cond.value);
         let then = self.build_stmt_expect_block(&if_stmt.then.value).into();
         let mut else_ = None;
@@ -258,7 +262,7 @@ impl AstToCAst {
         }
     }
 
-    fn build_return(&mut self, return_stmt: &StmtReturn) -> CReturnStmt {
+    fn build_return(&mut self, return_stmt: &Return) -> CReturnStmt {
         if let Some(value) = &return_stmt.value {
             let expr = self.build_expr(&value.value);
             CReturnStmt::new(Some(expr))
@@ -344,7 +348,7 @@ impl AstToCAst {
         vec![decl, assignment]
     }
 
-    fn build_loop(&mut self, loop_stmt: &StmtLoop) -> CWhileStmt {
+    fn build_loop(&mut self, loop_stmt: &Loop) -> CWhileStmt {
         let cond = CExpr::Constant(CConstant::Integer(1));
         match &loop_stmt.body.value {
             Stmt::Block(b) => {
@@ -364,7 +368,6 @@ impl AstToCAst {
         match expr {
             Expr::Var(e) => self.build_var(e).into(),
             Expr::Literal(e) => self.build_literal(e).into(),
-            Expr::Assign(e) => self.build_assign(e).into(),
             Expr::Call(e) => self.build_call(e).into(),
             Expr::Prefix(e) => self.build_prefix(e).into(),
             Expr::Infix(e) => self.build_infix(e).into(),
@@ -397,7 +400,7 @@ impl AstToCAst {
         }
     }
 
-    fn build_assign(&mut self, assign: &ast::expr::ExprAssign) -> CAssignment {
+    fn build_assign(&mut self, assign: &ast::stmt::Assign) -> CAssignment {
         let ident = self.build_expr(&assign.var.value);
         let ass = CAssignmentOperator::Assign;
         let value = self.build_expr(&assign.value.value);
