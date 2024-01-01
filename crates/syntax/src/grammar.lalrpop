@@ -96,16 +96,18 @@ Comma<T>: Vec<T> = {
 //                                          Declarations
 // --------------------------------------------------------------------------------------------------
 
-pub Program: Program = <stmts:Located<Decl>*> => Program { <> };
+pub Program: Program = <stmts:Located<Declaration>*> => Program { <> };
 
-Decl : Declaration = { 
-    DeclStruct, 
-    DeclFun 
+Declaration : Declaration = { 
+    DeclTypeObject, 
+    DeclFunction
 }
 
-DeclStruct: Declaration = "type" <name:Identifier> "=" "{" <members:Comma<TypedParam>> "}" => Declaration::TypeObject(TypeObject { <> });
-DeclFun: Declaration = "fun" <function:Function> => Declaration::Fun(<>);
+DeclTypeObject: Declaration = <decl:DeclTypeObjectInner> => Declaration::TypeObject(<>);
+DeclTypeObjectInner: TypeObject = "type" <name:Identifier> "=" "{" <members:Comma<TypedParam>> "}" => TypeObject { <> };
 
+DeclFunction: Declaration = <decl:DeclFunctionInner> => Declaration::Fun(<>);
+DeclFunctionInner: StmtFun = "fun" <name:Identifier> "(" <params:Comma<TypedParam>> ")" "->" <ret_ty:Located<Type>>  <body:StmtBlockInner> => StmtFun { <> };
 
 // --------------------------------------------------------------------------------------------------
 //                                          Statements
@@ -123,42 +125,35 @@ Stmt: Stmt = {
 }
 
 StmtVarDecl: Stmt = "let" <var:Identifier> ":" <ty:Located<Type>> "=" <value:Located<Expr>> ";" => Stmt::VariableDeclaration(VariableDeclaration { <> });
-
 StmtEmpty: Stmt = <l:@L> ";" <r:@R>  => Stmt::Empty(StmtEmpty{ span : Located::empty(file_id, l..r)});
+StmtExpr: Stmt = <value:Located<Expr>> ";" => Stmt::Expr(StmtExpr { <> });
+StmtReturn: Stmt = "return" <value:Located<Expr>?> ";" => Stmt::Return(StmtReturn { <> });
+StmtBreak: Stmt =  <l:@L> "break" ";" <r:@R> => Stmt::Break(StmtBreak { span : Located::empty(file_id, l..r) });
 
-StmtLoop: Stmt = StmtLoopInternal => Stmt::Loop(Box::new(<>));
-StmtLoopInternal: StmtLoop = "loop" <body:Located<StmtBlock>> => StmtLoop { <> };
+StmtLoop: Stmt = StmtLoopInner => Stmt::Loop(Box::new(<>));
+StmtLoopInner: StmtLoop = "loop" <body:Located<StmtBlock>> => StmtLoop { <> };
+
+StmtBlock: Stmt = StmtBlockInner => Stmt::Block(<>);
+StmtBlockInner: StmtBlock = "{" <stmts:Located<Stmt>*> "}" => StmtBlock { <> };
 
 StmtIf: Stmt = {
-    StmtIfInternal => Stmt::If(Box::new(<>)),
+    StmtIfInner => Stmt::If(Box::new(<>)),
 }
-
-StmtIfInternal: StmtIf = {
+StmtIfInner: StmtIf = {
     "if" "(" <cond:Located<Expr>> ")" <then:Located<StmtBlock>> => StmtIf { <>, else_: None },
     "if" "(" <cond:Located<Expr>> ")" <then:Located<StmtBlock>> "else" <else_:Located<StmtBlock>> => StmtIf { cond, then, else_: Some(else_) },
 }
-
-StmtBlock: Stmt = StmtBlockInternal => Stmt::Block(<>);
-
-StmtBlockInternal: StmtBlock = "{" <stmts:Located<Stmt>*> "}" => StmtBlock { <> };
-
-StmtExpr: Stmt = <value:Located<Expr>> ";" => Stmt::Expr(StmtExpr { <> });
-
-StmtReturn: Stmt = "return" <value:Located<Expr>?> ";" => Stmt::Return(StmtReturn { <> });
-
-StmtBreak: Stmt =  <l:@L> "break" ";" <r:@R> => Stmt::Break(StmtBreak { span : Located::empty(file_id, l..r) });
-
 
 // --------------------------------------------------------------------------------------------------
 //                                          Expressions
 // --------------------------------------------------------------------------------------------------
 
-Expr = ExprAssign;
-
-ExprAssign = {
-    <var:Located<ExprCall>> "=" <value:Located<Expr>> => Expr::Assign(Box::new(ExprAssign { <> })),
+Expr : Expr = {
+    ExprAssign,
     ExprLogicOr,
 }
+
+ExprAssign : Expr = <var:Located<ExprCall>> "=" <value:Located<Expr>> => Expr::Assign(Box::new(ExprAssign { <> }));
 
 ExprLogicOr = ExprInfix<ExprLogicOr, OpLogicOr, ExprLogicAnd>;
 ExprLogicAnd = ExprInfix<ExprLogicAnd, OpLogicAnd, ExprEquality>;
@@ -166,11 +161,6 @@ ExprEquality = ExprInfix<ExprEquality, OpEquality, ExprComparison>;
 ExprComparison = ExprInfix<ExprComparison, OpComparison, ExprTerm>;
 ExprTerm = ExprInfix<ExprTerm, OpTerm, ExprFactor>;
 ExprFactor = ExprInfix<ExprFactor, OpFactor, ExprPrefix>;
-
-ExprInfix<Lt, Op, Rt>: Expr = {
-    <lt:Located<Lt>> <op:Op> <rt:Located<Rt>> => Expr::Infix(Box::new(ExprInfix { <> })),
-    Rt,
-}
 
 OpLogicOr: OpInfix = "or" => OpInfix::LogicOr;
 
@@ -199,6 +189,11 @@ OpFactor: OpInfix = {
     "%" => OpInfix::Modulo,
 }
 
+ExprInfix<Lt, Op, Rt>: Expr = {
+    <lt:Located<Lt>> <op:Op> <rt:Located<Rt>> => Expr::Infix(Box::new(ExprInfix { <> })),
+    Rt,
+}
+
 ExprPrefix: Expr = {
     <op:OpPrefix> <rt:Located<ExprPrefix>> => Expr::Prefix(Box::new(ExprPrefix { <> })),
     ExprCall,
@@ -222,14 +217,9 @@ ExprPrimary: Expr = {
     "(" <Expr> ")",
 }
 
-StructInit: Expr = <name:Identifier> "{" <members: Comma<StructMemberInitPair>> "}" => Expr::StructureInit(Box::new(ExprStructureInit { <> }));
-
+StructInit: Expr = <name:Identifier> "{" <members: Comma<StructMemberInitPair>> "}" => Expr::StructureInit(ExprStructureInit { <> });
 StructMemberInitPair: (Identifier, Located<Expr>) = { <name:Identifier> ":" <value:Located<Expr>> => (<>) }
-
 ExprVar: Expr = <var:Identifier> => Expr::Var(ExprVar { <> });
-
-Function: StmtFun = <name:Identifier> "(" <params:Comma<TypedParam>> ")" "->" <ret_ty:Located<Type>>  <body:StmtBlockInternal> => StmtFun { <> };
-
 Identifier : Identifier = <name:identifier> => Identifier { <> };
 
 LiteralExpr : Expr = {

@@ -14,7 +14,7 @@ pub enum Expr {
     MemberAccess(Box<ExprMemberAccess>),
     Prefix(Box<ExprPrefix>),
     Infix(Box<ExprInfix>),
-    StructureInit(Box<ExprStructureInit>),
+    StructureInit(ExprStructureInit),
 }
 
 #[derive(Clone, Debug, PartialEq)]
