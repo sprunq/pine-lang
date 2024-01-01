@@ -139,10 +139,14 @@ StmtBlockInner: StmtBlock = "{" <stmts:Located<Stmt>*> "}" => StmtBlock { <> };
 StmtIf: Stmt = {
     StmtIfInner => Stmt::If(Box::new(<>)),
 }
-StmtIfInner: StmtIf = {
-    "if" "(" <cond:Located<Expr>> ")" <then:Located<StmtBlock>> => StmtIf { <>, else_: None },
-    "if" "(" <cond:Located<Expr>> ")" <then:Located<StmtBlock>> "else" <else_:Located<StmtBlock>> => StmtIf { cond, then, else_: Some(else_) },
-}
+StmtIfInner: StmtIf = "if" "(" <cond:Located<Expr>> ")" <then:Located<StmtBlock>> <optional_else : ("else" <Located<StmtBlock>>)?> => { 
+    match optional_else {
+        Some(els) => StmtIf { cond, then, else_: Some(els) },
+        None => StmtIf { cond, then, else_: None },
+    }
+};
+    
+
 
 // --------------------------------------------------------------------------------------------------
 //                                          Expressions
@@ -213,13 +217,13 @@ ExprCall: Expr = {
 ExprPrimary: Expr = {
     StructInit,
     LiteralExpr,
-    ExprVar,
+    ExprVariable,
     "(" <Expr> ")",
 }
 
 StructInit: Expr = <name:Identifier> "{" <members: Comma<StructMemberInitPair>> "}" => Expr::StructureInit(ExprStructureInit { <> });
 StructMemberInitPair: (Identifier, Located<Expr>) = { <name:Identifier> ":" <value:Located<Expr>> => (<>) }
-ExprVar: Expr = <var:Identifier> => Expr::Var(ExprVar { <> });
+ExprVariable: Expr = <var:Identifier> => Expr::Var(ExprVar { <> });
 Identifier : Identifier = <name:identifier> => Identifier { <> };
 
 LiteralExpr : Expr = {
