@@ -114,6 +114,10 @@ impl AstToCAst {
             Stmt::Loop(s) => vec![self.build_loop(s).into()],
             Stmt::Empty(_) => vec![CStmt::Empty],
             Stmt::VariableDeclaration(let_stmt) => self.build_variable_declaration(let_stmt),
+            Stmt::Assign(ass) => {
+                let ass_expr = self.build_assign(ass).into();
+                vec![CStmt::Expr(ass_expr)]
+            }
         }
     }
 
@@ -364,7 +368,6 @@ impl AstToCAst {
         match expr {
             Expr::Var(e) => self.build_var(e).into(),
             Expr::Literal(e) => self.build_literal(e).into(),
-            Expr::Assign(e) => self.build_assign(e).into(),
             Expr::Call(e) => self.build_call(e).into(),
             Expr::Prefix(e) => self.build_prefix(e).into(),
             Expr::Infix(e) => self.build_infix(e).into(),
@@ -397,7 +400,7 @@ impl AstToCAst {
         }
     }
 
-    fn build_assign(&mut self, assign: &ast::expr::ExprAssign) -> CAssignment {
+    fn build_assign(&mut self, assign: &ast::stmt::StmtAssign) -> CAssignment {
         let ident = self.build_expr(&assign.var.value);
         let ass = CAssignmentOperator::Assign;
         let value = self.build_expr(&assign.value.value);
@@ -417,7 +420,7 @@ impl AstToCAst {
     // a->b
     fn build_get(&mut self, get: &ast::expr::ExprMemberAccess) -> CMemberExpr {
         let obj = self.build_expr(&get.object.value);
-        let ident = self.build_identifier(&get.member_name);
+        let ident = self.build_identifier(&get.member_name.value);
         CMemberExpr::new(obj, CMemberOperator::Indirect, ident)
     }
 

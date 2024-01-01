@@ -1,5 +1,7 @@
 use std::fmt::{self, Display, Formatter};
 
+use base::located::Located;
+
 use super::{
     op::{OpInfix, OpPrefix},
     ExprS,
@@ -9,7 +11,6 @@ use super::{
 pub enum Expr {
     Var(ExprVar),
     Literal(ExprLiteral),
-    Assign(Box<ExprAssign>),
     Call(Box<ExprCall>),
     MemberAccess(Box<ExprMemberAccess>),
     Prefix(Box<ExprPrefix>),
@@ -24,12 +25,6 @@ pub struct ExprStructureInit {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ExprAssign {
-    pub var: ExprS,
-    pub value: ExprS,
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub struct ExprCall {
     pub callee: ExprS,
     pub args: Vec<ExprS>,
@@ -38,7 +33,7 @@ pub struct ExprCall {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExprMemberAccess {
     pub object: ExprS,
-    pub member_name: Identifier,
+    pub member_name: Located<Identifier>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
