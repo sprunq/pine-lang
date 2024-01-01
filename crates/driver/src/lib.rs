@@ -13,7 +13,7 @@ use c_gen::{
     passes::{ast_to_c::AstToCAst, extract_header::ExtractHeader},
 };
 use messages::message::Message;
-use syntax::{ast::Program, parser::Parser};
+use syntax::{ast::ProgramUnit, parser::Parser};
 
 pub struct Compiler<'a> {
     context: &'a mut CompileContext,
@@ -81,7 +81,7 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    fn write_parsed_to_file(&self, program: &Program) {
+    fn write_parsed_to_file(&self, program: &ProgramUnit) {
         let dir = self.context.build_dir.join("parsed.txt");
         let mut file = std::fs::File::create(dir).unwrap();
         std::io::Write::write_all(&mut file, format!("{:#?}", program).as_bytes()).unwrap();

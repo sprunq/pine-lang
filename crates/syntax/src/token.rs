@@ -1,19 +1,19 @@
-use base::located::Located;
 use logos::Logos;
 use std::fmt::Display;
 use std::num::{ParseFloatError, ParseIntError};
 
+#[repr(u8)]
 #[derive(Clone, Debug, Logos, PartialEq)]
 pub enum Token {
     // Single-character tokens.
     #[token("(")]
-    LtParen,
+    ParenOpen,
     #[token(")")]
-    RtParen,
+    ParenClose,
     #[token("{")]
-    LtBrace,
+    BraceOpen,
     #[token("}")]
-    RtBrace,
+    BraceClose,
     #[token(",")]
     Comma,
     #[token(".")]
@@ -167,10 +167,10 @@ impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use Token::*;
         match self {
-            LtParen => write!(f, "("),
-            RtParen => write!(f, ")"),
-            LtBrace => write!(f, "{{"),
-            RtBrace => write!(f, "}}"),
+            ParenOpen => write!(f, "("),
+            ParenClose => write!(f, ")"),
+            BraceOpen => write!(f, "{{"),
+            BraceClose => write!(f, "}}"),
             Comma => write!(f, ","),
             Dot => write!(f, "."),
             Minus => write!(f, "-"),
@@ -218,5 +218,11 @@ impl Display for Token {
             TyStr => write!(f, "str"),
             Error => write!(f, "error"),
         }
+    }
+}
+
+impl Token {
+    pub fn id(&self) -> u8 {
+        unsafe { *<*const _>::from(self).cast::<u8>() }
     }
 }

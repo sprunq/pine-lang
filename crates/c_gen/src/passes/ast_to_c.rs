@@ -4,7 +4,7 @@ use crate::c_ast::ty::CType;
 use crate::{INTERNAL_MAIN, KI_GC_NAME, KI_GC_NEW_CALL_PREFIX, KI_GC_NEW_CALL_SUFFIX};
 use syntax::ast::stmt::*;
 use syntax::ast::ty::{Type, TypedParam};
-use syntax::ast::Program;
+use syntax::ast::ProgramUnit;
 use syntax::ast::{expr::*, DeclS};
 use syntax::*;
 
@@ -22,12 +22,12 @@ impl AstToCAst {
         }
     }
 
-    pub fn transform(program: &Program, name: String) -> CTranslationUnit {
+    pub fn transform(program: &ProgramUnit, name: String) -> CTranslationUnit {
         let mut gen = Self::new();
         gen.build_translation_unit(program, name)
     }
 
-    fn build_translation_unit(&mut self, program: &Program, name: String) -> CTranslationUnit {
+    fn build_translation_unit(&mut self, program: &ProgramUnit, name: String) -> CTranslationUnit {
         let header_includes = self.include_headers();
 
         self.register_structs(program);
@@ -52,7 +52,7 @@ impl AstToCAst {
         }
     }
 
-    fn register_structs(&mut self, program: &Program) {
+    fn register_structs(&mut self, program: &ProgramUnit) {
         for stmt in &program.stmts {
             if let Declaration::TypeObject(s) = &stmt.value {
                 let name = CIdentifier::new(&s.name);

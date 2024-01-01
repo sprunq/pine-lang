@@ -14,6 +14,12 @@ pub type DeclS = Located<Declaration>;
 pub type TypeS = Located<Type>;
 
 #[derive(Debug, Default)]
-pub struct Program {
+pub struct ProgramUnit {
     pub stmts: Vec<DeclS>,
+}
+
+impl ProgramUnit {
+    pub fn new(stmts: Vec<DeclS>) -> Self {
+        Self { stmts }
+    }
 }
