@@ -127,7 +127,7 @@ Stmt: Stmt = {
 }
 
 StmtAssign : Stmt = Assign => Stmt::Assign(Box::new( <> ));
-Assign : Assign = <var:Located<Expr1>> "=" <value:Located<Expr>> ";" => Assign { <> };
+Assign : Assign = <var:Located<Expr>> "=" <value:Located<Expr>> ";" => Assign { <> };
 
 StmtVarDecl: Stmt = VariableDeclaration => Stmt::VariableDeclaration( <> );
 VariableDeclaration: VariableDeclaration = "let" <var:Identifier> ":" <ty:Located<Type>> "=" <value:Located<Expr>> ";" => VariableDeclaration { <> };
@@ -168,16 +168,21 @@ Expr2 = TierPrefix<OpPrefix,            Expr1>;
 
 Expr1: Expr = {
     ExprFunctionCall,
-    ExprMemberAccess,
     Expr0,
 }
 
 Expr0: Expr = {
+    ExprMemberAccess,
     ExprStructureInit,
-    ExprLiteral,
+    Term,
+}
+
+Term : Expr = {
     ExprVariable,
+    ExprLiteral,
     "(" <Expr> ")",
 }
+
 
 ExprMemberAccess: Expr = MemberAccess => Expr::MemberAccess(Box::new( <> ));
 MemberAccess : ExprMemberAccess = <object:Located<Expr1>> "." <member_name:Identifier> => ExprMemberAccess { <> };
@@ -185,14 +190,13 @@ MemberAccess : ExprMemberAccess = <object:Located<Expr1>> "." <member_name:Ident
 ExprFunctionCall: Expr = FunctionCall => Expr::Call(Box::new( <> ));
 FunctionCall : ExprCall = <callee:Located<Expr1>> "(" <args:Comma<Located<Expr>>> ")" => ExprCall { <> };
 
-ExprStructureInit: Expr = StructInit => Expr::StructureInit( <> );
-StructInit : ExprStructureInit = <name:Identifier> "{" <members: Comma<StructMemberInitPair>> "}" => ExprStructureInit { <> };
+ExprStructureInit: Expr = StructureInit => Expr::StructureInit( <> );
+StructureInit : ExprStructureInit = <name:Identifier> "{" <members:Comma<StructureInitPair>> "}" => ExprStructureInit { <> };
+StructureInitPair : (Identifier, Located<Expr>) = <name:Identifier> ":" <value:Located<Expr>> => (name, value);
 
 ExprVariable: Expr = Variable => Expr::Var( <> );
 Variable : ExprVar = <var:Identifier> => ExprVar { <> };
-
 Identifier : Identifier = <name:identifier> => Identifier { <> };
-StructMemberInitPair: (Identifier, Located<Expr>) = { <name:Identifier> ":" <value:Located<Expr>> => (<>) }
 
 ExprLiteral : Expr = Literal => Expr::Literal(<>);
 Literal : ExprLiteral = {
