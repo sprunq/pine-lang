@@ -1,0 +1,61 @@
+type Alpha[T, E]:
+    a : u32
+    b : u32
+    t : T
+    e : E
+
+    fun new(a : u32, b : u32, t : T, e : E) -> Self {
+        return Alpha[T,E] {a,b,t,e}
+    }
+
+    fun to_string(self) -> str:
+        return "hi";
+
+
+type Empty:
+    pass
+
+
+variant ASum:
+    | a : u8
+    | b : u32 
+    | alpha : Alpha[u8, bool]
+    | multi : Option[str]
+
+
+variant Option[T]:
+    | Some : T
+    | None
+
+fun match_expr():
+    let a : u64 = 
+        match myASumValue:
+        | alpha -> alpha.a
+        | multi -> multi.0.a 
+        | b ->  
+            match b:
+            | true -> 1
+            | false -> 0
+        | a -> 
+            print("is int")
+            print("and multi line")
+            a
+
+    
+    let b : u64 = 0
+
+
+fun add_alpha_beta(alpha : Alpha, i : u64) -> u64:
+    return alpha.a + i
+
+
+fun main() -> ():
+    let i : u32 = 0
+
+    let a = Alpha[u8, str]::new(42, 77, 2, "hello world")
+
+    loop:
+        if i == 100:
+            break
+        
+        i += 1
