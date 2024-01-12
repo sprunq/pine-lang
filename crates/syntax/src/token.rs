@@ -1,5 +1,9 @@
+use base::located::Located;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
+    Indent,
+    UnIndent,
     Eof,
     /// `(`
     LParen,
@@ -111,8 +115,8 @@ pub enum Token {
 }
 
 impl Token {
-    pub fn lookup(ident: &str) -> Token {
-        match ident {
+    pub fn lookup_keyword(ident: &str) -> Option<Token> {
+        let kw = match ident {
             "and" => Token::And,
             "or" => Token::Or,
             "type" => Token::Type,
@@ -136,7 +140,8 @@ impl Token {
             "f32" => Token::TyF32,
             "f64" => Token::TyF64,
             "str" => Token::TyStr,
-            _ => Token::Identifier(ident.to_string()),
-        }
+            _ => return None,
+        };
+        Some(kw)
     }
 }

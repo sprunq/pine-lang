@@ -1,13 +1,15 @@
+use std::{cmp::Ordering, collections::VecDeque};
+
 use crate::token::Token;
 use base::{located::Located, source_id::SourceId};
-use std::str::Chars;
 
 pub struct Lexer<'source> {
     pub input: &'source str,
-    pub iter: Chars<'source>,
+    pub chars: Vec<char>,
     pub file_id: SourceId,
-    pos: usize,
-    ch: char,
+    ch_pos: usize,
+    prev_line_indent_level: usize,
+    buffer: VecDeque<Located<Token>>,
 }
 
 impl<'source> Iterator for Lexer<'source> {
@@ -24,70 +26,152 @@ impl<'source> Iterator for Lexer<'source> {
 
 impl<'source> Lexer<'source> {
     pub fn new(file_id: SourceId, input: &'source str) -> Self {
-        let mut iter = input.chars();
+        let mut chars = input.chars().collect::<Vec<_>>();
+        chars.push('\0');
+
         Self {
-            ch: iter.next().unwrap_or('\0'),
-            pos: 0,
+            ch_pos: 0,
+            prev_line_indent_level: 0,
             file_id,
             input,
-            iter,
+            chars,
+            buffer: VecDeque::new(),
         }
     }
 
-    pub fn next_token(&mut self) -> Located<Token> {
-        self.skip_whitespace();
-        let tok: Token;
-        let start_pos = self.pos;
-        tok = match &self.ch {
+    fn next_token(&mut self) -> Located<Token> {
+        if let Some(t) = self.buffer.pop_front() {
+            return t;
+        }
+
+        while self.ch() != '\n' && self.ch().is_ascii_whitespace() {
+            self.advance()
+        }
+
+        let start_pos = self.ch_pos;
+        let tok = match &self.ch() {
             '\0' => Token::Eof,
-            ':' => Token::Colon,
-            ',' => Token::Comma,
-            '(' => Token::LParen,
-            ')' => Token::RParen,
-            '{' => Token::LBrace,
-            '}' => Token::RBrace,
-            '[' => Token::LBracket,
-            ']' => Token::RBracket,
+            '\n' => {
+                self.advance();
+                let line_start_pos = self.ch_pos;
+                while self.ch().is_whitespace() && self.ch() != '\n' {
+                    // we do not handle tabs yet
+                    self.advance();
+                }
+                let next_real_token_pos = self.ch_pos;
+                let indent_spaces = next_real_token_pos - line_start_pos;
+
+                if indent_spaces % 4 != 0 {
+                    panic!("Only indent steps of 4 allowed")
+                }
+
+                let prev_indent_steps = self.prev_line_indent_level / 4;
+                let indent_steps = indent_spaces / 4;
+                let steps_diff = prev_indent_steps.abs_diff(indent_steps);
+
+                match indent_steps.cmp(&prev_indent_steps) {
+                    Ordering::Less => {
+                        self.prev_line_indent_level = indent_spaces;
+                        for i in 0..steps_diff - 1 {
+                            let sp = line_start_pos + 4 * i..line_start_pos + 4 * i + 4;
+                            let t = Located::new(self.file_id, sp, Token::UnIndent);
+                            self.buffer.push_back(t);
+                        }
+                        Token::UnIndent
+                    }
+                    Ordering::Equal => return self.next_token(),
+                    Ordering::Greater => {
+                        self.prev_line_indent_level = indent_spaces;
+                        for i in 0..steps_diff - 1 {
+                            let sp = line_start_pos + 4 * i..line_start_pos + 4 * i + 4;
+                            let t = Located::new(self.file_id, sp, Token::Indent);
+                            self.buffer.push_back(t);
+                        }
+                        Token::Indent
+                    }
+                }
+            }
+            ':' => {
+                self.advance();
+                Token::Colon
+            }
+            ',' => {
+                self.advance();
+                Token::Comma
+            }
+            '(' => {
+                self.advance();
+                Token::LParen
+            }
+            ')' => {
+                self.advance();
+                Token::RParen
+            }
+            '{' => {
+                self.advance();
+                Token::LBrace
+            }
+            '}' => {
+                self.advance();
+                Token::RBrace
+            }
+            '[' => {
+                self.advance();
+                Token::LBracket
+            }
+            ']' => {
+                self.advance();
+                Token::RBracket
+            }
             '=' => {
-                if self.advance_if_peeked('=') {
+                self.advance();
+                if self.advance_if('=') {
                     Token::EqualEqual
                 } else {
                     Token::Equal
                 }
             }
             '!' => {
-                if self.advance_if_peeked('=') {
+                self.advance();
+                if self.advance_if('=') {
                     Token::BangEqual
                 } else {
                     Token::Bang
                 }
             }
             '>' => {
-                if self.advance_if_peeked('=') {
+                self.advance();
+                if self.advance_if('=') {
                     Token::GreaterEqual
                 } else {
                     Token::Greater
                 }
             }
             '<' => {
-                if self.advance_if_peeked('=') {
+                self.advance();
+                if self.advance_if('=') {
                     Token::LessEqual
                 } else {
                     Token::Less
                 }
             }
-            '+' => Token::Plus,
+            '+' => {
+                self.advance();
+                Token::Plus
+            }
             '-' => {
-                if self.advance_if_peeked('>') {
+                self.advance();
+                if self.advance_if('>') {
                     Token::ArrowRight
                 } else {
                     Token::Minus
                 }
             }
             '/' => {
+                self.advance();
                 // line comment
-                if self.advance_if_peeked('/') {
-                    while !matches!(self.ch, '\n' | '\0') {
+                if self.advance_if('/') {
+                    while !matches!(self.ch(), '\n' | '\0') {
                         self.advance();
                     }
                     return self.next_token();
@@ -95,25 +179,37 @@ impl<'source> Lexer<'source> {
                     Token::Slash
                 }
             }
-            '*' => Token::Asterisk,
-            '%' => Token::Modulo,
-            '.' => Token::Dot,
-            '|' => Token::Pipe,
+            '*' => {
+                self.advance();
+                Token::Asterisk
+            }
+            '%' => {
+                self.advance();
+                Token::Modulo
+            }
+            '.' => {
+                self.advance();
+                Token::Dot
+            }
+            '|' => {
+                self.advance();
+                Token::Pipe
+            }
             '"' => {
                 let mut string = String::new();
                 self.advance();
                 loop {
-                    match self.ch {
+                    match self.ch() {
                         '"' => break,
                         '\0' | '\n' => panic!("unterminated string"),
                         '\\' => {
                             self.advance();
-                            match self.ch {
+                            match self.ch() {
                                 '"' => string.push('"'),
                                 _ => panic!("invalid escape sequence"),
                             }
                         }
-                        _ => string.push(self.ch),
+                        _ => string.push(self.ch()),
                     }
                     self.advance();
                 }
@@ -121,10 +217,11 @@ impl<'source> Lexer<'source> {
                 Token::String(string)
             }
             _ => {
-                if Self::is_letter(self.ch) && self.ch != '_' {
+                if Self::is_letter(self.ch()) && self.ch() != '_' {
                     let ident = self.read_identifier();
-                    Token::lookup(ident)
-                } else if self.ch.is_ascii_digit() {
+                    let s = String::from_iter(ident);
+                    Token::lookup_keyword(&s).unwrap_or(Token::Identifier(s))
+                } else if self.ch().is_ascii_digit() {
                     let number = self.consume_number();
                     match number {
                         Number::Int(i) => Token::Integer(i),
@@ -135,34 +232,27 @@ impl<'source> Lexer<'source> {
                 }
             }
         };
-        self.advance();
-        Located::new(self.file_id, start_pos..self.pos, tok)
-    }
-
-    fn skip_whitespace(&mut self) {
-        while self.ch.is_ascii_whitespace() {
-            self.advance();
-        }
+        Located::new(self.file_id, start_pos..self.ch_pos, tok)
     }
 
     fn is_letter(character: char) -> bool {
         character.is_alphabetic() || character == '_'
     }
 
-    pub fn read_identifier(&mut self) -> &str {
-        let start_pos = self.pos;
-        while Self::is_letter(self.ch) || self.ch.is_ascii_digit() {
+    pub fn read_identifier(&mut self) -> &[char] {
+        let start_pos = self.ch_pos;
+        while Self::is_letter(self.ch()) || self.ch().is_ascii_digit() {
             self.advance();
         }
-        let end_pos = self.pos;
-        &self.input[start_pos..end_pos]
+        let end_pos = self.ch_pos;
+        &self.chars[start_pos..end_pos]
     }
 
     fn consume_number(&mut self) -> Number {
         let mut parts = vec![];
 
-        while self.ch.is_ascii_digit() || self.ch == '.' {
-            parts.push(self.ch);
+        while self.ch().is_ascii_digit() || self.ch() == '.' {
+            parts.push(self.ch());
             self.advance();
         }
 
@@ -177,17 +267,31 @@ impl<'source> Lexer<'source> {
         }
     }
 
+    #[inline]
     fn advance(&mut self) {
-        self.ch = self.iter.next().unwrap_or('\0');
-        self.pos += 1;
+        self.ch_pos += 1;
     }
 
-    fn peek_char(&mut self) -> char {
-        self.iter.clone().next().unwrap_or('\0')
+    #[inline]
+    #[allow(unused)]
+    fn peek(&mut self) -> char {
+        match self.chars.get(self.ch_pos + 1) {
+            Some(ch) => *ch,
+            None => '\0',
+        }
     }
 
-    fn advance_if_peeked(&mut self, ch: char) -> bool {
-        if self.peek_char() == ch {
+    #[inline]
+    fn ch(&self) -> char {
+        match self.chars.get(self.ch_pos) {
+            Some(ch) => *ch,
+            None => '\0',
+        }
+    }
+
+    #[inline]
+    fn advance_if(&mut self, ch: char) -> bool {
+        if self.ch() == ch {
             self.advance();
             true
         } else {
@@ -206,21 +310,115 @@ mod tests {
     use super::*;
 
     fn assert_token(input: &str, expected: Token) {
-        let mut lexer = Lexer::new(SourceId::from_path(""), input);
-        let token = lexer.next_token();
-        assert_eq!(token.value, expected);
-        let empty = lexer.next_token();
-        assert_eq!(empty.value, Token::Eof);
+        let lexer = Lexer::new(SourceId::from_path(""), input);
+        let tokens = lexer.collect::<Vec<_>>();
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].value, expected);
     }
 
     fn assert_tokens(input: &str, expected: Vec<Token>) {
-        let mut lexer = Lexer::new(SourceId::from_path(""), input);
-        for expected in expected {
-            let token = lexer.next_token();
+        let lexer = Lexer::new(SourceId::from_path(""), input);
+        let tokens = lexer.collect::<Vec<_>>();
+        assert_eq!(tokens.len(), expected.len());
+        for (expected, token) in expected.into_iter().zip(tokens) {
             assert_eq!(token.value, expected);
         }
-        let empty = lexer.next_token();
-        assert_eq!(empty.value, Token::Eof);
+    }
+
+    #[test]
+    fn test_indentation_no_indent() {
+        assert_tokens(
+            r#"
+hello
+world
+"#,
+            vec![
+                Token::Identifier("hello".to_string()),
+                Token::Identifier("world".to_string()),
+            ],
+        )
+    }
+
+    #[test]
+    fn test_indentation_single_up() {
+        assert_tokens(
+            r#"
+hello
+    world
+    yo
+    man 
+"#,
+            vec![
+                Token::Identifier("hello".to_string()),
+                Token::Indent,
+                Token::Identifier("world".to_string()),
+                Token::Identifier("yo".to_string()),
+                Token::Identifier("man".to_string()),
+                Token::UnIndent,
+            ],
+        )
+    }
+
+    #[test]
+    fn test_indentation_multiple_up() {
+        assert_tokens(
+            r#"
+hello
+        world
+        yo
+        man 
+"#,
+            vec![
+                Token::Identifier("hello".to_string()),
+                Token::Indent,
+                Token::Indent,
+                Token::Identifier("world".to_string()),
+                Token::Identifier("yo".to_string()),
+                Token::Identifier("man".to_string()),
+                Token::UnIndent,
+                Token::UnIndent,
+            ],
+        )
+    }
+
+    #[test]
+    fn test_indentation_multiple_down() {
+        assert_tokens(
+            r#"
+        hello
+world
+"#,
+            vec![
+                Token::Indent,
+                Token::Indent,
+                Token::Identifier("hello".to_string()),
+                Token::UnIndent,
+                Token::UnIndent,
+                Token::Identifier("world".to_string()),
+            ],
+        )
+    }
+
+    #[test]
+    fn test_indentation_up_down() {
+        assert_tokens(
+            r#"
+hello
+    world
+        yo
+    man 
+"#,
+            vec![
+                Token::Identifier("hello".to_string()),
+                Token::Indent,
+                Token::Identifier("world".to_string()),
+                Token::Indent,
+                Token::Identifier("yo".to_string()),
+                Token::UnIndent,
+                Token::Identifier("man".to_string()),
+                Token::UnIndent,
+            ],
+        )
     }
 
     #[test]
@@ -270,8 +468,8 @@ mod tests {
 
     #[test]
     fn test_comment() {
-        assert_token("// hello", Token::Eof);
-        assert_token("// hello\n", Token::Eof);
+        assert_tokens("// hello", vec![]);
+        assert_tokens("// hello\n", vec![]);
     }
 
     #[test]
@@ -291,13 +489,7 @@ mod tests {
 
     #[test]
     fn test_eof() {
-        assert_token("", Token::Eof);
-    }
-
-    #[test]
-    fn test_whitespace() {
-        assert_token("  \n  ", Token::Eof);
-        assert_token("  \n  \n  ", Token::Eof);
+        assert_tokens("", vec![]);
     }
 
     #[test]
@@ -334,31 +526,15 @@ mod tests {
     }
 
     #[test]
-    fn test_multiple_lines_with_comment_and_whitespace() {
-        assert_tokens(
-            "hello // world\n\nworld",
-            vec![
-                Token::Identifier("hello".to_string()),
-                Token::Identifier("world".to_string()),
-            ],
-        );
-    }
-
-    #[test]
     fn test_infix_expression() {
         assert_tokens(
             "1 + 2",
-            vec![
-                Token::Integer(1),
-                Token::Plus,
-                Token::Integer(2),
-                Token::Eof,
-            ],
+            vec![Token::Integer(1), Token::Plus, Token::Integer(2)],
         );
     }
 
     #[test]
     fn test_prefix_expression() {
-        assert_tokens("-1", vec![Token::Minus, Token::Integer(1), Token::Eof]);
+        assert_tokens("-1", vec![Token::Minus, Token::Integer(1)]);
     }
 }

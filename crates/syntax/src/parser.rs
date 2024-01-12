@@ -6,7 +6,7 @@ pub struct Parser {}
 
 impl Parser {
     pub fn parse_file(source: SourceId, file: &str) -> Result<Program, Message> {
-        let lexer = Lexer::new(source, file);
+        let _lexer = Lexer::new(source, file);
         todo!()
         //     let parser = Parser::new();
         //     let parse_res = parser.parse(source, lexer);
