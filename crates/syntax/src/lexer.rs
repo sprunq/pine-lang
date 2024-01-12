@@ -1,14 +1,13 @@
-use std::{cmp::Ordering, collections::VecDeque};
-
 use crate::token::Token;
 use base::{located::Located, source_id::SourceId};
+use std::{cmp::Ordering, collections::VecDeque};
 
 pub struct Lexer<'source> {
     pub input: &'source str,
     pub chars: Vec<char>,
     pub file_id: SourceId,
     ch_pos: usize,
-    prev_line_indent_level: usize,
+    prev_line_indent: usize,
     buffer: VecDeque<Located<Token>>,
 }
 
@@ -31,7 +30,7 @@ impl<'source> Lexer<'source> {
 
         Self {
             ch_pos: 0,
-            prev_line_indent_level: 0,
+            prev_line_indent: 0,
             file_id,
             input,
             chars,
@@ -44,49 +43,47 @@ impl<'source> Lexer<'source> {
             return t;
         }
 
-        while self.ch() != '\n' && self.ch().is_ascii_whitespace() {
-            self.advance()
-        }
+        self.skip_whitespace_until_nl();
 
         let start_pos = self.ch_pos;
         let tok = match &self.ch() {
             '\0' => Token::Eof,
             '\n' => {
                 self.advance();
-                let line_start_pos = self.ch_pos;
-                while self.ch().is_whitespace() && self.ch() != '\n' {
-                    // we do not handle tabs yet
-                    self.advance();
-                }
-                let next_real_token_pos = self.ch_pos;
-                let indent_spaces = next_real_token_pos - line_start_pos;
+                let line_start = self.ch_pos;
+                self.skip_whitespace_until_nl();
+                let indent = self.ch_pos - line_start;
 
-                if indent_spaces % 4 != 0 {
+                if indent % 4 != 0 {
                     panic!("Only indent steps of 4 allowed")
                 }
 
-                let prev_indent_steps = self.prev_line_indent_level / 4;
-                let indent_steps = indent_spaces / 4;
+                let prev_indent_steps = self.prev_line_indent / 4;
+                let indent_steps = indent / 4;
                 let steps_diff = prev_indent_steps.abs_diff(indent_steps);
+
+                // we can only return one token at a time, so we need to buffer the extra indents
+                let mut push_extra_indents_to_buffer = |token: Token| {
+                    for i in 0..steps_diff - 1 {
+                        let t = Located::new(
+                            self.file_id,
+                            line_start + 4 * i..line_start + 4 * i + 4,
+                            token.clone(),
+                        );
+                        self.buffer.push_back(t);
+                    }
+                };
 
                 match indent_steps.cmp(&prev_indent_steps) {
                     Ordering::Less => {
-                        self.prev_line_indent_level = indent_spaces;
-                        for i in 0..steps_diff - 1 {
-                            let sp = line_start_pos + 4 * i..line_start_pos + 4 * i + 4;
-                            let t = Located::new(self.file_id, sp, Token::UnIndent);
-                            self.buffer.push_back(t);
-                        }
+                        self.prev_line_indent = indent;
+                        push_extra_indents_to_buffer(Token::UnIndent);
                         Token::UnIndent
                     }
                     Ordering::Equal => return self.next_token(),
                     Ordering::Greater => {
-                        self.prev_line_indent_level = indent_spaces;
-                        for i in 0..steps_diff - 1 {
-                            let sp = line_start_pos + 4 * i..line_start_pos + 4 * i + 4;
-                            let t = Located::new(self.file_id, sp, Token::Indent);
-                            self.buffer.push_back(t);
-                        }
+                        self.prev_line_indent = indent;
+                        push_extra_indents_to_buffer(Token::Indent);
                         Token::Indent
                     }
                 }
@@ -239,7 +236,7 @@ impl<'source> Lexer<'source> {
         character.is_alphabetic() || character == '_'
     }
 
-    pub fn read_identifier(&mut self) -> &[char] {
+    fn read_identifier(&mut self) -> &[char] {
         let start_pos = self.ch_pos;
         while Self::is_letter(self.ch()) || self.ch().is_ascii_digit() {
             self.advance();
@@ -268,17 +265,15 @@ impl<'source> Lexer<'source> {
     }
 
     #[inline]
-    fn advance(&mut self) {
-        self.ch_pos += 1;
+    fn skip_whitespace_until_nl(&mut self) {
+        while self.ch() != '\n' && self.ch().is_whitespace() {
+            self.advance()
+        }
     }
 
     #[inline]
-    #[allow(unused)]
-    fn peek(&mut self) -> char {
-        match self.chars.get(self.ch_pos + 1) {
-            Some(ch) => *ch,
-            None => '\0',
-        }
+    fn advance(&mut self) {
+        self.ch_pos += 1;
     }
 
     #[inline]
