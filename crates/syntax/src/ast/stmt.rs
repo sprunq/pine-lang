@@ -1,25 +1,20 @@
+use super::{expr::Identifier, impl_from_as_box, types::Type, ExprS, StmtS, TypeS};
 use base::located::Located;
-
-use super::{expr::Identifier, ty::TypedParam, ExprS, StmtS, TypeS};
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Declaration {
-    Fun(FunctionDeclaration),
-    TypeObject(TypeObject),
-}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Stmt {
-    Block(Block),
-    Expr(StmtExpr),
+    Block(Box<Block>),
+    Expr(Box<ExprS>),
     If(Box<IfElse>),
-    Return(Return),
-    Break(Break),
-    VariableDeclaration(VariableDeclaration),
+    Return(Box<Return>),
+    Break(Box<Break>),
+    VariableDeclaration(Box<VariableDeclaration>),
     Loop(Box<Loop>),
-    Empty(Empty),
+    Empty(Box<Empty>),
     Assign(Box<Assign>),
 }
+
+impl_from_as_box!(Block => Stmt => Block);
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Assign {
@@ -33,23 +28,9 @@ pub struct Block {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct TypeObject {
-    pub name: Identifier,
-    pub members: Vec<TypedParam>,
-}
-
-/// An expression statement evaluates an expression and discards the result.
-#[derive(Clone, Debug, PartialEq)]
-pub struct StmtExpr {
-    pub value: ExprS,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct FunctionDeclaration {
-    pub name: Identifier,
-    pub params: Vec<TypedParam>,
-    pub ret_ty: TypeS,
-    pub body: Block,
+pub struct TypedParam {
+    pub name: Located<Identifier>,
+    pub ty: Located<Type>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

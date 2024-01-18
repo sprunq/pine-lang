@@ -6,5 +6,8 @@ edition = "2021"
 [dependencies]
 base = { path = "../base" }
 messages = { path = "../messages" }
+derive_more = {version = "0.99.17", default-features = false, features = ["display"]}
+internment = "0.7.0"
+
 
 [build-dependencies]

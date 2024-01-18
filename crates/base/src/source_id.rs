@@ -40,6 +40,12 @@ impl SourceId {
     }
 }
 
+impl From<&str> for SourceId {
+    fn from(value: &str) -> Self {
+        SourceId::from_path(value)
+    }
+}
+
 impl fmt::Display for SourceId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.0.len() == 0 {

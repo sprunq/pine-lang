@@ -48,4 +48,11 @@ impl LexerError {
     pub fn notes(&self) -> Vec<String> {
         vec![]
     }
+
+    pub fn origin(&self) -> SourceId {
+        match self {
+            LexerError::UnexpectedInput { token } => token.source,
+            LexerError::UnterminatedString { location } => location.source,
+        }
+    }
 }

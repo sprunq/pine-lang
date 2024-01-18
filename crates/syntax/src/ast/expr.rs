@@ -7,35 +7,35 @@ use super::{
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
-    Var(ExprVar),
-    Literal(ExprLiteral),
-    Call(Box<ExprCall>),
-    MemberAccess(Box<ExprMemberAccess>),
-    Prefix(Box<ExprPrefix>),
-    Infix(Box<ExprInfix>),
-    StructureInit(ExprStructureInit),
+    Variable(Box<Variable>),
+    Literal(Box<Literal>),
+    Call(Box<Call>),
+    MemberAccess(Box<MemberAccess>),
+    Prefix(Box<Prefix>),
+    Infix(Box<Infix>),
+    StructureInit(Box<StructureInit>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ExprStructureInit {
+pub struct StructureInit {
     pub name: Identifier,
     pub members: Vec<(Identifier, ExprS)>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ExprCall {
+pub struct Call {
     pub callee: ExprS,
     pub args: Vec<ExprS>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ExprMemberAccess {
+pub struct MemberAccess {
     pub object: ExprS,
     pub member_name: Identifier,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum ExprLiteral {
+pub enum Literal {
     Bool(bool),
     Nil,
     Integer(i64),
@@ -44,20 +44,20 @@ pub enum ExprLiteral {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ExprInfix {
+pub struct Infix {
     pub lt: ExprS,
     pub op: OpInfix,
     pub rt: ExprS,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ExprPrefix {
+pub struct Prefix {
     pub op: OpPrefix,
     pub rt: ExprS,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ExprVar {
+pub struct Variable {
     pub var: Identifier,
 }
 

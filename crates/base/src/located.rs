@@ -1,4 +1,7 @@
-use std::ops::Range;
+use std::{
+    fmt::{self, Display},
+    ops::Range,
+};
 
 use crate::source_id::SourceId;
 
@@ -19,6 +22,16 @@ impl<T> Located<T> {
     }
 }
 
+impl<A> Located<A> {
+    pub fn map_value<U, F: FnOnce(&A) -> U>(&self, f: F) -> Located<U> {
+        Located {
+            span: self.span.clone(),
+            source: self.source,
+            value: f(&self.value),
+        }
+    }
+}
+
 impl Located<()> {
     pub fn empty(source: SourceId, span: Range<usize>) -> Self {
         Self {
@@ -26,5 +39,14 @@ impl Located<()> {
             source,
             value: (),
         }
+    }
+}
+
+impl<T> Display for Located<T>
+where
+    T: Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value)
     }
 }

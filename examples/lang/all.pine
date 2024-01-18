@@ -54,6 +54,8 @@ fun main() -> ():
 
     let a = Alpha[u8, str]::new(42, 77, 2, "hello world")
 
+    let b = if true: 20 else: 30
+
     loop:
         if i == 100:
             break

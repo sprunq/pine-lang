@@ -2,15 +2,46 @@ use crate::{ast::Program, lexer::Lexer, token::Token};
 use base::{located::Located, source_id::SourceId};
 use messages::{lexer::LexerError, message::Message, parser::ParserError};
 
-pub struct Parser {}
+struct Precedence {
+    level: u8,
+}
 
-impl Parser {
-    pub fn parse_file(source: SourceId, file: &str) -> Result<Program, Message> {
-        let _lexer = Lexer::new(source, file);
+pub struct Parser<I> {
+    tokens: I,
+    current: Located<Token>,
+    peek: Located<Token>,
+}
+
+impl<I> Parser<I>
+where
+    I: Iterator<Item = Located<Token>>,
+{
+    pub fn new(tokens: I) -> Self {
+        let mut p = Self {
+            tokens,
+            current: Located::new("/".into(), 0..0, Token::Eof),
+            peek: Located::new("/".into(), 0..0, Token::Eof),
+        };
+        p.next();
+        p.next();
+        p
+    }
+
+    pub fn parse(tokens: I) -> Result<Program, Message> {
+        let parser = Parser::new(tokens);
         todo!()
-        //     let parser = Parser::new();
-        //     let parse_res = parser.parse(source, lexer);
+    }
 
-        //     parse_res.map_err(|e| Self::uplift_parse_err(source, file, e))
+    fn next(&mut self) {
+        let new_peek = self.tokens.next().expect("no more tokens");
+        std::mem::swap(&mut self.current, &mut self.peek);
+        self.peek = new_peek;
+    }
+
+    fn expect(&mut self, expected: Token) -> Result<(), ParserError> {
+        if self.peek.value != expected {
+            return Err(ParserError::new_unrecognized_token(&self.peek, expected));
+        }
+        Ok(())
     }
 }

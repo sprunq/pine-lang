@@ -6,6 +6,5 @@ edition = "2021"
 [dependencies]
 base = { path = "../base" }
 syntax = { path = "../syntax" }
-c_gen = { path = "../c_gen" }
 messages = { path = "../messages" }
 codespan-reporting = "0.9.5"

@@ -14,6 +14,13 @@ impl Message {
             Message::Parse(err) => err.as_diagnostic(),
         }
     }
+
+    pub fn origin(&self) -> SourceId {
+        match self {
+            Message::Lexer(err) => err.origin(),
+            Message::Parse(err) => err.origin(),
+        }
+    }
 }
 
 impl From<LexerError> for Message {

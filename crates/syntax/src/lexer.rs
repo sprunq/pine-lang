@@ -1,6 +1,8 @@
 use crate::token::Token;
 use base::{located::Located, source_id::SourceId};
-use std::{cmp::Ordering, collections::VecDeque};
+use internment::Intern;
+use messages::message::Message;
+use std::{cmp::Ordering, collections::VecDeque, sync::mpsc::Sender};
 
 pub struct Lexer<'source> {
     pub input: &'source str,
@@ -9,6 +11,7 @@ pub struct Lexer<'source> {
     ch_pos: usize,
     prev_line_indent: usize,
     buffer: VecDeque<Located<Token>>,
+    msg_sender: Sender<Message>,
 }
 
 impl<'source> Iterator for Lexer<'source> {
@@ -24,7 +27,7 @@ impl<'source> Iterator for Lexer<'source> {
 }
 
 impl<'source> Lexer<'source> {
-    pub fn new(file_id: SourceId, input: &'source str) -> Self {
+    pub fn new(file_id: SourceId, input: &'source str, msg_sender: Sender<Message>) -> Self {
         let mut chars = input.chars().collect::<Vec<_>>();
         chars.push('\0');
 
@@ -35,6 +38,7 @@ impl<'source> Lexer<'source> {
             input,
             chars,
             buffer: VecDeque::new(),
+            msg_sender,
         }
     }
 
@@ -211,13 +215,13 @@ impl<'source> Lexer<'source> {
                     self.advance();
                 }
                 self.advance();
-                Token::String(string)
+                Token::String(Intern::new(string))
             }
             _ => {
                 if Self::is_letter(self.ch()) && self.ch() != '_' {
                     let ident = self.read_identifier();
                     let s = String::from_iter(ident);
-                    Token::lookup_keyword(&s).unwrap_or(Token::Identifier(s))
+                    Token::lookup_keyword(&s).unwrap_or(Token::Identifier(Intern::new(s)))
                 } else if self.ch().is_ascii_digit() {
                     let number = self.consume_number();
                     match number {
@@ -302,17 +306,21 @@ enum Number {
 
 #[cfg(test)]
 mod tests {
+    use std::sync;
+
     use super::*;
 
     fn assert_token(input: &str, expected: Token) {
-        let lexer = Lexer::new(SourceId::from_path(""), input);
+        let (msg_sender, _) = sync::mpsc::channel();
+        let lexer = Lexer::new(SourceId::from_path(""), input, msg_sender);
         let tokens = lexer.collect::<Vec<_>>();
         assert_eq!(tokens.len(), 1);
         assert_eq!(tokens[0].value, expected);
     }
 
     fn assert_tokens(input: &str, expected: Vec<Token>) {
-        let lexer = Lexer::new(SourceId::from_path(""), input);
+        let (msg_sender, _) = sync::mpsc::channel();
+        let lexer = Lexer::new(SourceId::from_path(""), input, msg_sender);
         let tokens = lexer.collect::<Vec<_>>();
         assert_eq!(tokens.len(), expected.len());
         for (expected, token) in expected.into_iter().zip(tokens) {
@@ -328,8 +336,8 @@ hello
 world
 "#,
             vec![
-                Token::Identifier("hello".to_string()),
-                Token::Identifier("world".to_string()),
+                Token::Identifier("hello".to_string().into()),
+                Token::Identifier("world".to_string().into()),
             ],
         )
     }
@@ -344,11 +352,11 @@ hello
     man 
 "#,
             vec![
-                Token::Identifier("hello".to_string()),
+                Token::Identifier("hello".to_string().into()),
                 Token::Indent,
-                Token::Identifier("world".to_string()),
-                Token::Identifier("yo".to_string()),
-                Token::Identifier("man".to_string()),
+                Token::Identifier("world".to_string().into()),
+                Token::Identifier("yo".to_string().into()),
+                Token::Identifier("man".to_string().into()),
                 Token::UnIndent,
             ],
         )
@@ -364,12 +372,12 @@ hello
         man 
 "#,
             vec![
-                Token::Identifier("hello".to_string()),
+                Token::Identifier("hello".to_string().into()),
                 Token::Indent,
                 Token::Indent,
-                Token::Identifier("world".to_string()),
-                Token::Identifier("yo".to_string()),
-                Token::Identifier("man".to_string()),
+                Token::Identifier("world".to_string().into()),
+                Token::Identifier("yo".to_string().into()),
+                Token::Identifier("man".to_string().into()),
                 Token::UnIndent,
                 Token::UnIndent,
             ],
@@ -386,10 +394,10 @@ world
             vec![
                 Token::Indent,
                 Token::Indent,
-                Token::Identifier("hello".to_string()),
+                Token::Identifier("hello".to_string().into()),
                 Token::UnIndent,
                 Token::UnIndent,
-                Token::Identifier("world".to_string()),
+                Token::Identifier("world".to_string().into()),
             ],
         )
     }
@@ -404,13 +412,13 @@ hello
     man 
 "#,
             vec![
-                Token::Identifier("hello".to_string()),
+                Token::Identifier("hello".to_string().into()),
                 Token::Indent,
-                Token::Identifier("world".to_string()),
+                Token::Identifier("world".to_string().into()),
                 Token::Indent,
-                Token::Identifier("yo".to_string()),
+                Token::Identifier("yo".to_string().into()),
                 Token::UnIndent,
-                Token::Identifier("man".to_string()),
+                Token::Identifier("man".to_string().into()),
                 Token::UnIndent,
             ],
         )
@@ -450,14 +458,14 @@ hello
 
     #[test]
     fn test_string() {
-        assert_token(r#""hello""#, Token::String("hello".to_string()));
+        assert_token(r#""hello""#, Token::String("hello".to_string().into()));
     }
 
     #[test]
     fn test_string_with_escaped_quote() {
         assert_token(
             r#""hello \"world\"!""#,
-            Token::String("hello \"world\"!".to_string()),
+            Token::String("hello \"world\"!".to_string().into()),
         );
     }
 
@@ -469,7 +477,7 @@ hello
 
     #[test]
     fn test_identifier() {
-        assert_token("hello", Token::Identifier("hello".to_string()));
+        assert_token("hello", Token::Identifier("hello".to_string().into()));
     }
 
     #[test]
@@ -492,8 +500,8 @@ hello
         assert_tokens(
             "hello world",
             vec![
-                Token::Identifier("hello".to_string()),
-                Token::Identifier("world".to_string()),
+                Token::Identifier("hello".to_string().into()),
+                Token::Identifier("world".to_string().into()),
             ],
         );
     }
@@ -503,8 +511,8 @@ hello
         assert_tokens(
             "hello\nworld",
             vec![
-                Token::Identifier("hello".to_string()),
-                Token::Identifier("world".to_string()),
+                Token::Identifier("hello".to_string().into()),
+                Token::Identifier("world".to_string().into()),
             ],
         );
     }
@@ -514,8 +522,8 @@ hello
         assert_tokens(
             "hello // world\nworld",
             vec![
-                Token::Identifier("hello".to_string()),
-                Token::Identifier("world".to_string()),
+                Token::Identifier("hello".to_string().into()),
+                Token::Identifier("world".to_string().into()),
             ],
         );
     }

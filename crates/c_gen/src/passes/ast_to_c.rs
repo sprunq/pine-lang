@@ -3,7 +3,7 @@ use crate::c_ast::op::{CAssignmentOperator, CBinaryOperator, CUnaryOperator};
 use crate::c_ast::ty::CType;
 use crate::{INTERNAL_MAIN, KI_GC_NAME, KI_GC_NEW_CALL_PREFIX, KI_GC_NEW_CALL_SUFFIX};
 use syntax::ast::stmt::*;
-use syntax::ast::ty::{Type, TypedParam};
+use syntax::ast::types::{Type, TypedParam};
 use syntax::ast::Program;
 use syntax::ast::{expr::*, DeclS};
 use syntax::*;
@@ -458,7 +458,7 @@ impl AstToCAst {
         }
     }
 
-    fn build_ty(&mut self, ty: &ast::ty::Type) -> CType {
+    fn build_ty(&mut self, ty: &ast::types::Type) -> CType {
         match ty {
             Type::Unit => CType::Void,
             Type::Bool => CType::U8,

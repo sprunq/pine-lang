@@ -3,23 +3,26 @@ use codespan_reporting::diagnostic::{Diagnostic, Label};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum ParserError {
-    ExtraToken {
-        token: Located<String>,
-    },
-    InvalidToken {
+    UnexpectedEof {
         location: Located<()>,
-    },
-    UnrecognizedEOF {
-        location: Located<()>,
-        expected: Vec<String>,
     },
     UnrecognizedToken {
         token: Located<String>,
-        expected: Vec<String>,
+        expected: String,
     },
 }
 
 impl ParserError {
+    pub fn new_unrecognized_token<F, E>(found: &Located<F>, expected: E) -> ParserError
+    where
+        F: ToString,
+        E: ToString,
+    {
+        let token = found.map_value(|t| t.to_string());
+        let expected = expected.to_string();
+        ParserError::UnrecognizedToken { token, expected }
+    }
+
     pub fn as_diagnostic(&self) -> Diagnostic<SourceId> {
         let code = self.code();
         let message = self.message();
@@ -34,34 +37,21 @@ impl ParserError {
 
     pub fn code(&self) -> usize {
         match self {
-            ParserError::ExtraToken { .. } => 0,
-            ParserError::InvalidToken { .. } => 1,
-            ParserError::UnrecognizedEOF { .. } => 2,
-            ParserError::UnrecognizedToken { .. } => 3,
+            ParserError::UnexpectedEof { .. } => 1,
+            ParserError::UnrecognizedToken { .. } => 2,
         }
     }
 
     pub fn message(&self) -> &str {
         match self {
-            ParserError::ExtraToken { .. } => "extra token",
-            ParserError::InvalidToken { .. } => "invalid token",
-            ParserError::UnrecognizedEOF { .. } => "unrecognized EOF",
+            ParserError::UnexpectedEof { .. } => "unrecognized EOF",
             ParserError::UnrecognizedToken { .. } => "unrecognized token",
         }
     }
 
     pub fn labels(&self) -> Vec<Label<SourceId>> {
         match self {
-            ParserError::ExtraToken { token } => {
-                vec![Label::primary(token.source, token.span.clone())]
-            }
-            ParserError::InvalidToken { location } => {
-                vec![Label::primary(location.source, location.span.clone())]
-            }
-            ParserError::UnrecognizedEOF {
-                location,
-                expected: _,
-            } => {
+            ParserError::UnexpectedEof { location } => {
                 vec![Label::primary(location.source, location.span.clone())]
             }
             ParserError::UnrecognizedToken { token, expected: _ } => {
@@ -72,34 +62,19 @@ impl ParserError {
 
     pub fn notes(&self) -> Vec<String> {
         match self {
-            ParserError::ExtraToken { .. } => vec![],
-            ParserError::InvalidToken { .. } => vec![],
-            ParserError::UnrecognizedEOF {
-                location: _,
-                expected,
-            } => {
-                vec![format!("expected: {}", one_of(expected))]
+            ParserError::UnexpectedEof { location: _ } => {
+                vec![]
             }
             ParserError::UnrecognizedToken { token: _, expected } => {
-                vec![format!("expected: {}", one_of(expected))]
+                vec![format!("expected: {}", expected)]
             }
         }
     }
-}
 
-fn one_of(tokens: &[String]) -> String {
-    let (token_last, tokens) = match tokens.split_last() {
-        Some((token_last, &[])) => return token_last.to_string(),
-        Some((token_last, tokens)) => (token_last, tokens),
-        None => return "nothing".to_string(),
-    };
-
-    let mut output = String::new();
-    for token in tokens {
-        output.push_str(token);
-        output.push_str(", ");
+    pub fn origin(&self) -> SourceId {
+        match self {
+            ParserError::UnexpectedEof { location } => location.source,
+            ParserError::UnrecognizedToken { token, expected: _ } => token.source,
+        }
     }
-    output.push_str("or ");
-    output.push_str(token_last);
-    output
 }
