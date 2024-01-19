@@ -69,8 +69,8 @@ impl<'source> Lexer<'source> {
                 let steps_diff = prev_indent_steps.abs_diff(indent_steps);
 
                 // we can only return one token at a time, so we need to buffer the extra indents
-                let mut push_extra_indents_to_buffer = |token: Token| {
-                    for i in 0..steps_diff - 1 {
+                let mut push_indents_to_buffer = |token: Token| {
+                    for i in 0..steps_diff {
                         let t = Spanned::new(line_start + 4 * i..line_start + 4 * i + 4, token);
                         self.buffer.push_back(t);
                     }
@@ -79,14 +79,14 @@ impl<'source> Lexer<'source> {
                 match indent_steps.cmp(&prev_indent_steps) {
                     Ordering::Less => {
                         self.prev_line_indent = indent;
-                        push_extra_indents_to_buffer(Token::UnIndent);
-                        Token::UnIndent
+                        push_indents_to_buffer(Token::UnIndent);
+                        Token::NewLine
                     }
                     Ordering::Equal => Token::NewLine,
                     Ordering::Greater => {
                         self.prev_line_indent = indent;
-                        push_extra_indents_to_buffer(Token::Indent);
-                        Token::Indent
+                        push_indents_to_buffer(Token::Indent);
+                        Token::NewLine
                     }
                 }
             }
@@ -352,12 +352,14 @@ hello
             vec![
                 Token::NewLine,
                 Token::Identifier("hello".to_string().into()),
+                Token::NewLine,
                 Token::Indent,
                 Token::Identifier("world".to_string().into()),
                 Token::NewLine,
                 Token::Identifier("yo".to_string().into()),
                 Token::NewLine,
                 Token::Identifier("man".to_string().into()),
+                Token::NewLine,
                 Token::UnIndent,
             ],
         )
@@ -375,6 +377,7 @@ hello
             vec![
                 Token::NewLine,
                 Token::Identifier("hello".to_string().into()),
+                Token::NewLine,
                 Token::Indent,
                 Token::Indent,
                 Token::Identifier("world".to_string().into()),
@@ -382,6 +385,7 @@ hello
                 Token::Identifier("yo".to_string().into()),
                 Token::NewLine,
                 Token::Identifier("man".to_string().into()),
+                Token::NewLine,
                 Token::UnIndent,
                 Token::UnIndent,
             ],
@@ -396,9 +400,11 @@ hello
 world
 "#,
             vec![
+                Token::NewLine,
                 Token::Indent,
                 Token::Indent,
                 Token::Identifier("hello".to_string().into()),
+                Token::NewLine,
                 Token::UnIndent,
                 Token::UnIndent,
                 Token::Identifier("world".to_string().into()),
@@ -419,12 +425,16 @@ hello
             vec![
                 Token::NewLine,
                 Token::Identifier("hello".to_string().into()),
+                Token::NewLine,
                 Token::Indent,
                 Token::Identifier("world".to_string().into()),
+                Token::NewLine,
                 Token::Indent,
                 Token::Identifier("yo".to_string().into()),
+                Token::NewLine,
                 Token::UnIndent,
                 Token::Identifier("man".to_string().into()),
+                Token::NewLine,
                 Token::UnIndent,
             ],
         )
