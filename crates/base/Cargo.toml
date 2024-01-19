@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-internment = { workspace = true }
 serde = { workspace = true }
+internment = { workspace = true }
 codespan-reporting = { workspace = true }
