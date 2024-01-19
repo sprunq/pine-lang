@@ -1,14 +1,17 @@
 use base::{located::Located, source_id::SourceId};
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, serde::Serialize)]
 pub enum ParserError {
     UnexpectedEof {
         location: Located<()>,
     },
     UnrecognizedToken {
-        token: Located<String>,
+        found: Located<String>,
         expected: String,
+    },
+    ExpectedType {
+        found: Located<String>,
     },
 }
 
@@ -20,7 +23,18 @@ impl ParserError {
     {
         let token = found.map_value(|t| t.to_string());
         let expected = expected.to_string();
-        ParserError::UnrecognizedToken { token, expected }
+        ParserError::UnrecognizedToken {
+            found: token,
+            expected,
+        }
+    }
+
+    pub fn new_expected_type<F>(found: &Located<F>) -> ParserError
+    where
+        F: ToString,
+    {
+        let token = found.map_value(|t| t.to_string());
+        ParserError::ExpectedType { found: token }
     }
 
     pub fn as_diagnostic(&self) -> Diagnostic<SourceId> {
@@ -39,6 +53,7 @@ impl ParserError {
         match self {
             ParserError::UnexpectedEof { .. } => 1,
             ParserError::UnrecognizedToken { .. } => 2,
+            ParserError::ExpectedType { .. } => 3,
         }
     }
 
@@ -46,6 +61,7 @@ impl ParserError {
         match self {
             ParserError::UnexpectedEof { .. } => "unrecognized EOF",
             ParserError::UnrecognizedToken { .. } => "unrecognized token",
+            ParserError::ExpectedType { .. } => "expected type",
         }
     }
 
@@ -54,8 +70,14 @@ impl ParserError {
             ParserError::UnexpectedEof { location } => {
                 vec![Label::primary(location.source, location.span.clone())]
             }
-            ParserError::UnrecognizedToken { token, expected: _ } => {
+            ParserError::UnrecognizedToken {
+                found: token,
+                expected: _,
+            } => {
                 vec![Label::primary(token.source, token.span.clone())]
+            }
+            ParserError::ExpectedType { found } => {
+                vec![Label::primary(found.source, found.span.clone())]
             }
         }
     }
@@ -65,8 +87,11 @@ impl ParserError {
             ParserError::UnexpectedEof { location: _ } => {
                 vec![]
             }
-            ParserError::UnrecognizedToken { token: _, expected } => {
+            ParserError::UnrecognizedToken { found: _, expected } => {
                 vec![format!("expected: {}", expected)]
+            }
+            ParserError::ExpectedType { found } => {
+                vec![format!("found: {}", found.value)]
             }
         }
     }
@@ -74,7 +99,11 @@ impl ParserError {
     pub fn origin(&self) -> SourceId {
         match self {
             ParserError::UnexpectedEof { location } => location.source,
-            ParserError::UnrecognizedToken { token, expected: _ } => token.source,
+            ParserError::UnrecognizedToken {
+                found: token,
+                expected: _,
+            } => token.source,
+            ParserError::ExpectedType { found } => found.source,
         }
     }
 }

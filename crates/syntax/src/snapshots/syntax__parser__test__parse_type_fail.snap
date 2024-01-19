@@ -1,0 +1,15 @@
+---
+source: crates/syntax/src/parser.rs
+expression: parsed
+---
+{
+  "Err": {
+    "ExpectedType": {
+      "found": {
+        "span": "",
+        "source": "",
+        "value": "1"
+      }
+    }
+  }
+}

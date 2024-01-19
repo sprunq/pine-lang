@@ -6,5 +6,4 @@ edition = "2021"
 [dependencies]
 internment = "0.7.0"
 codespan-reporting = "0.9.5"
-
-[build-dependencies] 
+serde = { version = "1.0", features = ["derive"] }

@@ -1,0 +1,7 @@
+---
+source: crates/syntax/src/parser.rs
+expression: parsed
+---
+{
+  "Ok": []
+}

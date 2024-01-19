@@ -61,3 +61,9 @@ impl fmt::Debug for SourceId {
         write!(f, "{}", self)
     }
 }
+
+impl serde::Serialize for SourceId {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.to_path().to_string_lossy())
+    }
+}

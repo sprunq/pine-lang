@@ -7,16 +7,17 @@ pub mod types;
 use self::{toplevel::TopLevelDeclaration, types::Type};
 use base::located::Located;
 use expr::Expr;
+use serde::Serialize;
 use stmt::Stmt;
 
 pub type StmtS = Located<Stmt>;
 pub type ExprS = Located<Expr>;
-pub type DeclS = Located<TopLevelDeclaration>;
+pub type TopLevelS = Located<TopLevelDeclaration>;
 pub type TypeS = Located<Type>;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Program {
-    pub stmts: Vec<DeclS>,
+    pub stmts: Vec<TopLevelS>,
 }
 
 macro_rules! impl_from_as_box {

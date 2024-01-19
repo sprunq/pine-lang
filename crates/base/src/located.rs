@@ -1,11 +1,10 @@
+use crate::source_id::SourceId;
 use std::{
     fmt::{self, Display},
     ops::Range,
 };
 
-use crate::source_id::SourceId;
-
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct Located<T> {
     pub span: Range<usize>,
     pub source: SourceId,
@@ -13,17 +12,31 @@ pub struct Located<T> {
 }
 
 impl<T> Located<T> {
-    pub fn new(source: SourceId, span: Range<usize>, value: T) -> Self {
+    pub fn new<S>(source: S, span: Range<usize>, value: T) -> Self
+    where
+        S: Into<SourceId>,
+    {
         Self {
             span,
-            source,
+            source: source.into(),
+            value,
+        }
+    }
+
+    pub fn with_new_value<U>(&self, value: U) -> Located<U> {
+        Located {
+            span: self.span.clone(),
+            source: self.source,
             value,
         }
     }
 }
 
 impl<A> Located<A> {
-    pub fn map_value<U, F: FnOnce(&A) -> U>(&self, f: F) -> Located<U> {
+    pub fn map_value<U, F>(&self, f: F) -> Located<U>
+    where
+        F: FnOnce(&A) -> U,
+    {
         Located {
             span: self.span.clone(),
             source: self.source,

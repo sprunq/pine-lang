@@ -1,4 +1,6 @@
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+use serde::Serialize;
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize)]
 pub enum OpInfix {
     Add,
     Subtract,
@@ -15,7 +17,7 @@ pub enum OpInfix {
     LogicOr,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize)]
 pub enum OpPrefix {
     Negate,
     Not,

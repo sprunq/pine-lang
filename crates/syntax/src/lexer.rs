@@ -1,8 +1,7 @@
 use crate::token::Token;
 use base::{located::Located, source_id::SourceId};
 use internment::Intern;
-use messages::message::Message;
-use std::{cmp::Ordering, collections::VecDeque, sync::mpsc::Sender};
+use std::{cmp::Ordering, collections::VecDeque};
 
 pub struct Lexer<'source> {
     pub input: &'source str,
@@ -11,23 +10,26 @@ pub struct Lexer<'source> {
     ch_pos: usize,
     prev_line_indent: usize,
     buffer: VecDeque<Located<Token>>,
-    msg_sender: Sender<Message>,
+    reached_eof: bool,
 }
 
 impl<'source> Iterator for Lexer<'source> {
     type Item = Located<Token>;
     fn next(&mut self) -> Option<Self::Item> {
-        match self.next_token() {
-            Located {
-                value: Token::Eof, ..
-            } => None,
-            token => Some(token),
+        if self.reached_eof {
+            return None;
         }
+
+        let next = self.next_token();
+        if Token::Eof == next.value && !self.reached_eof {
+            self.reached_eof = true;
+        }
+        Some(next)
     }
 }
 
 impl<'source> Lexer<'source> {
-    pub fn new(file_id: SourceId, input: &'source str, msg_sender: Sender<Message>) -> Self {
+    pub fn new(file_id: SourceId, input: &'source str) -> Self {
         let mut chars = input.chars().collect::<Vec<_>>();
         chars.push('\0');
 
@@ -38,7 +40,7 @@ impl<'source> Lexer<'source> {
             input,
             chars,
             buffer: VecDeque::new(),
-            msg_sender,
+            reached_eof: false,
         }
     }
 
@@ -236,6 +238,7 @@ impl<'source> Lexer<'source> {
         Located::new(self.file_id, start_pos..self.ch_pos, tok)
     }
 
+    #[inline]
     fn is_letter(character: char) -> bool {
         character.is_alphabetic() || character == '_'
     }
@@ -306,23 +309,19 @@ enum Number {
 
 #[cfg(test)]
 mod tests {
-    use std::sync;
-
     use super::*;
 
     fn assert_token(input: &str, expected: Token) {
-        let (msg_sender, _) = sync::mpsc::channel();
-        let lexer = Lexer::new(SourceId::from_path(""), input, msg_sender);
+        let lexer = Lexer::new(SourceId::from_path(""), input);
         let tokens = lexer.collect::<Vec<_>>();
-        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens.len(), 1 + 1); // +1 for EOF
         assert_eq!(tokens[0].value, expected);
     }
 
     fn assert_tokens(input: &str, expected: Vec<Token>) {
-        let (msg_sender, _) = sync::mpsc::channel();
-        let lexer = Lexer::new(SourceId::from_path(""), input, msg_sender);
+        let lexer = Lexer::new(SourceId::from_path(""), input);
         let tokens = lexer.collect::<Vec<_>>();
-        assert_eq!(tokens.len(), expected.len());
+        assert_eq!(tokens.len(), expected.len() + 1); // +1 for EOF
         for (expected, token) in expected.into_iter().zip(tokens) {
             assert_eq!(token.value, expected);
         }

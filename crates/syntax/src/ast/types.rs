@@ -1,4 +1,6 @@
-#[derive(Clone, Debug, PartialEq)]
+use serde::Serialize;
+
+#[derive(Clone, Debug, Serialize)]
 pub enum Type {
     Unit,
     Bool,

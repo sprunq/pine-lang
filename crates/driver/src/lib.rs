@@ -1,7 +1,7 @@
-use base::{compile_context::CompileContext, located::Located, source_id::SourceId};
+use base::{compile_context::CompileContext, source_id::SourceId};
 use messages::message::Message;
 use std::sync::mpsc::Sender;
-use syntax::{ast::Program, lexer::Lexer, parser::Parser, token::Token};
+use syntax::{ast::Program, lexer::Lexer, parser::Parser};
 
 pub struct Compiler<'a> {
     context: &'a mut CompileContext,
@@ -17,7 +17,7 @@ impl<'a> Compiler<'a> {
 
         let file_content = self.context.file_cache.fetch(source_id).unwrap();
 
-        let lexer = Lexer::new(source_id, &file_content, msg_sender.clone());
+        let lexer = Lexer::new(source_id, &file_content);
 
         let parsed = match Parser::parse(lexer) {
             Ok(parsed) => parsed,

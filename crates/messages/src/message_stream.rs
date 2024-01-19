@@ -1,9 +1,6 @@
-use base::source_id::SourceId;
-
 use crate::message::Message;
 use std::{
-    collections::{vec_deque::Iter, VecDeque},
-    iter::Filter,
+    collections::VecDeque,
     sync::{mpsc::Sender, Arc, Mutex},
 };
 

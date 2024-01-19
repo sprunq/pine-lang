@@ -1,0 +1,13 @@
+---
+source: crates/syntax/src/parser.rs
+expression: parsed
+---
+{
+  "Ok": {
+    "span": "",
+    "source": "",
+    "value": {
+      "name": "hello_world"
+    }
+  }
+}
