@@ -82,7 +82,7 @@ impl<'source> Lexer<'source> {
                         push_extra_indents_to_buffer(Token::UnIndent);
                         Token::UnIndent
                     }
-                    Ordering::Equal => return self.next_token(),
+                    Ordering::Equal => Token::NewLine,
                     Ordering::Greater => {
                         self.prev_line_indent = indent;
                         push_extra_indents_to_buffer(Token::Indent);
@@ -331,8 +331,11 @@ hello
 world
 "#,
             vec![
+                Token::NewLine,
                 Token::Identifier("hello".to_string().into()),
+                Token::NewLine,
                 Token::Identifier("world".to_string().into()),
+                Token::NewLine,
             ],
         )
     }
@@ -347,10 +350,13 @@ hello
     man 
 "#,
             vec![
+                Token::NewLine,
                 Token::Identifier("hello".to_string().into()),
                 Token::Indent,
                 Token::Identifier("world".to_string().into()),
+                Token::NewLine,
                 Token::Identifier("yo".to_string().into()),
+                Token::NewLine,
                 Token::Identifier("man".to_string().into()),
                 Token::UnIndent,
             ],
@@ -367,11 +373,14 @@ hello
         man 
 "#,
             vec![
+                Token::NewLine,
                 Token::Identifier("hello".to_string().into()),
                 Token::Indent,
                 Token::Indent,
                 Token::Identifier("world".to_string().into()),
+                Token::NewLine,
                 Token::Identifier("yo".to_string().into()),
+                Token::NewLine,
                 Token::Identifier("man".to_string().into()),
                 Token::UnIndent,
                 Token::UnIndent,
@@ -393,6 +402,7 @@ world
                 Token::UnIndent,
                 Token::UnIndent,
                 Token::Identifier("world".to_string().into()),
+                Token::NewLine,
             ],
         )
     }
@@ -407,6 +417,7 @@ hello
     man 
 "#,
             vec![
+                Token::NewLine,
                 Token::Identifier("hello".to_string().into()),
                 Token::Indent,
                 Token::Identifier("world".to_string().into()),
@@ -467,7 +478,7 @@ hello
     #[test]
     fn test_comment() {
         assert_tokens("// hello", vec![]);
-        assert_tokens("// hello\n", vec![]);
+        assert_tokens("// hello\n", vec![Token::NewLine]);
     }
 
     #[test]
@@ -507,6 +518,7 @@ hello
             "hello\nworld",
             vec![
                 Token::Identifier("hello".to_string().into()),
+                Token::NewLine,
                 Token::Identifier("world".to_string().into()),
             ],
         );
@@ -518,6 +530,7 @@ hello
             "hello // world\nworld",
             vec![
                 Token::Identifier("hello".to_string().into()),
+                Token::NewLine,
                 Token::Identifier("world".to_string().into()),
             ],
         );

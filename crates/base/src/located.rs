@@ -24,13 +24,13 @@ impl<T> Spanned<T> {
 }
 
 impl<A> Spanned<A> {
-    pub fn map_value<U, F>(&self, f: F) -> Spanned<U>
+    pub fn map_value<U, F>(self, f: F) -> Spanned<U>
     where
-        F: FnOnce(&A) -> U,
+        F: FnOnce(A) -> U,
     {
         Spanned {
-            span: self.span.clone(),
-            value: f(&self.value),
+            span: self.span,
+            value: f(self.value),
         }
     }
 }

@@ -21,7 +21,7 @@ pub enum ParserError {
 impl ParserError {
     pub fn new_unrecognized_token<F, E>(
         source_id: SourceId,
-        found: &Spanned<F>,
+        found: Spanned<F>,
         expected: E,
     ) -> ParserError
     where
@@ -37,7 +37,7 @@ impl ParserError {
         }
     }
 
-    pub fn new_expected_type<F>(source_id: SourceId, found: &Spanned<F>) -> ParserError
+    pub fn new_expected_type<F>(source_id: SourceId, found: Spanned<F>) -> ParserError
     where
         F: ToString,
     {

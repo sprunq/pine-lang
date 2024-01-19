@@ -1,5 +1,6 @@
 use super::{
     expr::Identifier,
+    impl_from_as_box,
     stmt::{Block, TypedParam},
     TypeS,
 };
@@ -11,6 +12,9 @@ pub enum TopLevelDeclaration {
     Fun(Box<FunctionDeclaration>),
     TypeObject(Box<TypeObject>),
 }
+
+impl_from_as_box!(FunctionDeclaration => TopLevelDeclaration => Fun);
+impl_from_as_box!(TypeObject => TopLevelDeclaration => TypeObject);
 
 #[derive(Clone, Debug, Serialize)]
 pub struct FunctionDeclaration {

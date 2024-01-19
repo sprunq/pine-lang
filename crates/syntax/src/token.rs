@@ -8,6 +8,9 @@ pub enum Token {
     #[display(fmt = "unindent")]
     UnIndent,
 
+    #[display(fmt = "newline")]
+    NewLine,
+
     #[display(fmt = "EOF")]
     Eof,
 

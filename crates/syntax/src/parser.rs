@@ -2,7 +2,7 @@
 use crate::{
     ast::{
         expr::Identifier,
-        stmt::{Block, TypedParam},
+        stmt::{Block, Stmt, TypedParam},
         toplevel::{FunctionDeclaration, TypeObject},
         types::Type,
         Program, TopLevelS,
@@ -15,6 +15,16 @@ use messages::{message::Message, parser::ParserError};
 #[allow(dead_code)]
 struct Precedence {
     level: u8,
+}
+
+macro_rules! spanned {
+    ($self:ident, $body:block) => {{
+        let s = $self.current.span.start;
+        let value = $body;
+        let e = $self.current.span.end;
+        let spanned = Spanned::new(s..e, value);
+        Ok(spanned)
+    }};
 }
 
 pub struct Parser<I> {
@@ -67,7 +77,7 @@ where
         if self.current.value != expected {
             return Err(ParserError::new_unrecognized_token(
                 self.source_id,
-                &self.current,
+                self.current.clone(),
                 expected,
             ));
         }
@@ -87,25 +97,35 @@ where
     }
 
     fn parse_top_level(&mut self) -> Result<TopLevelS, ParserError> {
-        todo!()
+        match self.current_v() {
+            Token::Fun => self.parse_func_decl().map(|e| e.map_value(|e| e.into())),
+            Token::Type => self.parse_type_object().map(|e| e.map_value(|e| e.into())),
+            _ => Err(ParserError::new_unrecognized_token(
+                self.source_id,
+                self.current.clone(),
+                "top level declaration",
+            )),
+        }
     }
 
     /// fun ident(a : Alpha, b : u64) -> u64:
     ///    block
-    fn parse_function_declaration(&mut self) -> Result<FunctionDeclaration, ParserError> {
-        self.expect(Token::Fun)?;
-        let name = self.parse_identifier()?;
-        self.expect(Token::LParen)?;
-        let params = self.parse_typed_params()?;
-        self.expect(Token::RParen)?;
-        self.expect(Token::ArrowRight)?;
-        let ret_ty = self.parse_type()?;
-        self.expect(Token::Colon)?;
-        let body = self.parse_block()?;
-        Ok(FunctionDeclaration::new(name, params, ret_ty, body))
+    fn parse_func_decl(&mut self) -> Result<Spanned<FunctionDeclaration>, ParserError> {
+        spanned!(self, {
+            self.expect(Token::Fun)?;
+            let name = self.parse_identifier()?;
+            self.expect(Token::LParen)?;
+            let params = self.parse_typed_params()?;
+            self.expect(Token::RParen)?;
+            self.expect(Token::ArrowRight)?;
+            let ret_ty = self.parse_type()?;
+            self.expect(Token::Colon)?;
+            let body = self.parse_block()?.value;
+            FunctionDeclaration::new(name, params, ret_ty, body)
+        })
     }
 
-    fn parse_type_object(&mut self) -> Result<TypeObject, ParserError> {
+    fn parse_type_object(&mut self) -> Result<Spanned<TypeObject>, ParserError> {
         todo!()
     }
 
@@ -118,7 +138,7 @@ where
         } else {
             Err(ParserError::new_unrecognized_token(
                 self.source_id,
-                &self.current,
+                self.current.clone(),
                 "identifier",
             ))
         }
@@ -168,7 +188,7 @@ where
             _ => {
                 return Err(ParserError::new_expected_type(
                     self.source_id,
-                    &self.current,
+                    self.current.clone(),
                 ))
             }
         };
@@ -176,7 +196,22 @@ where
         Ok(self.current.with_new_value(ty))
     }
 
-    fn parse_block(&mut self) -> Result<Block, ParserError> {
+    fn parse_block(&mut self) -> Result<Spanned<Block>, ParserError> {
+        let mut stmts = Vec::new();
+
+        let s = self.current.span.start;
+
+        while self.current_v() == Token::NewLine {
+            stmts.push(self.parse_stmt()?);
+        }
+        let block = Block::new(stmts);
+
+        let e = self.current.span.end;
+        let spanned = Spanned::new(s..e, block);
+        Ok(spanned)
+    }
+
+    fn parse_stmt(&mut self) -> Result<Spanned<Stmt>, ParserError> {
         todo!()
     }
 }

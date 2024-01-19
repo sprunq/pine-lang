@@ -28,6 +28,12 @@ pub struct Block {
     pub stmts: Vec<StmtS>,
 }
 
+impl Block {
+    pub fn new(stmts: Vec<StmtS>) -> Block {
+        Block { stmts }
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct TypedParam {
     pub name: Spanned<Identifier>,
