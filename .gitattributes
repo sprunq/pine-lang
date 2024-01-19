@@ -1,0 +1,5 @@
+*.pine linguist-language=Pine
+*.pi linguist-language=Pine
+
+*.pine linguist-detectable=true
+*.pi linguist-detectable=true
