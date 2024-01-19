@@ -1,0 +1,18 @@
+---
+source: crates/syntax/src/parser.rs
+expression: parsed
+---
+{
+  "Err": {
+    "UnrecognizedToken": {
+      "found": {
+        "source": "",
+        "located": {
+          "span": "",
+          "value": "EOF"
+        }
+      },
+      "expected": ":"
+    }
+  }
+}

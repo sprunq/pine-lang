@@ -59,6 +59,10 @@ where
         self.peek.value
     }
 
+    fn current_v(&self) -> Token {
+        self.current.value
+    }
+
     fn expect(&mut self, expected: Token) -> Result<(), ParserError> {
         if self.current.value != expected {
             return Err(ParserError::new_unrecognized_token(
@@ -120,9 +124,11 @@ where
         }
     }
 
+    /// [ ident : type, ident : type, ... ]
     fn parse_typed_params(&mut self) -> Result<Vec<TypedParam>, ParserError> {
         let mut params = Vec::new();
 
+        // indent : type
         let mut parse_one = |this: &mut Self| -> Result<(), ParserError> {
             let name = this.parse_identifier()?;
             this.expect(Token::Colon)?;
@@ -132,14 +138,12 @@ where
         };
 
         // parse first param
-        if matches!(self.peek_v(), Token::Identifier(_)) {
+        if matches!(self.current_v(), Token::Identifier(_)) {
             parse_one(self)?;
         }
-        loop {
-            // all next params are delimited by comma
-            if self.peek_v() != Token::Comma {
-                break;
-            }
+
+        // all next params are delimited by comma
+        while self.current_v() == Token::Comma {
             self.next();
             // parse next param
             parse_one(self)?;
@@ -168,7 +172,7 @@ where
                 ))
             }
         };
-
+        self.next();
         Ok(self.current.with_new_value(ty))
     }
 
@@ -237,6 +241,34 @@ mod test {
     fn test_parse_typed_params() {
         let input = r#"a : Alpha, b : u64"#;
         let parsed = parser(input).parse_typed_params();
+        SETTINGS.bind(|| {
+            insta::assert_json_snapshot!(parsed);
+        });
+    }
+
+    #[test]
+    fn test_parse_typed_param_multi() {
+        let input = r#"a : Alpha, b : u64, c : bool"#;
+        let parsed = parser(input).parse_typed_params();
+        SETTINGS.bind(|| {
+            insta::assert_json_snapshot!(parsed);
+        });
+    }
+
+    #[test]
+    fn test_parse_typed_param_single() {
+        let input = r#"a : Alpha"#;
+        let parsed = parser(input).parse_typed_params();
+        SETTINGS.bind(|| {
+            insta::assert_json_snapshot!(parsed);
+        });
+    }
+
+    #[test]
+    fn test_parse_typed_param_fail() {
+        let input = r#"a : Alpha, b : u64, c : bool, d"#;
+        let parsed = parser(input).parse_typed_params();
+        assert!(parsed.is_err());
         SETTINGS.bind(|| {
             insta::assert_json_snapshot!(parsed);
         });

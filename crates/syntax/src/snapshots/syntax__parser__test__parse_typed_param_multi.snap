@@ -29,6 +29,18 @@ expression: parsed
         "span": "",
         "value": "U64"
       }
+    },
+    {
+      "name": {
+        "span": "",
+        "value": {
+          "name": "c"
+        }
+      },
+      "ty": {
+        "span": "",
+        "value": "Bool"
+      }
     }
   ]
 }

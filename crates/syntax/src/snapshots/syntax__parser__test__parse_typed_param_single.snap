@@ -17,18 +17,6 @@ expression: parsed
           "Struct": "Alpha"
         }
       }
-    },
-    {
-      "name": {
-        "span": "",
-        "value": {
-          "name": "b"
-        }
-      },
-      "ty": {
-        "span": "",
-        "value": "U64"
-      }
     }
   ]
 }
