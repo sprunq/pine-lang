@@ -5,7 +5,6 @@ expression: parsed
 {
   "Ok": {
     "span": "",
-    "source": "",
     "value": "Bool"
   }
 }

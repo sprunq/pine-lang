@@ -1,5 +1,5 @@
 use super::{expr::Identifier, impl_from_as_box, types::Type, ExprS, StmtS, TypeS};
-use base::located::Located;
+use base::located::Spanned;
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]
@@ -30,12 +30,12 @@ pub struct Block {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct TypedParam {
-    pub name: Located<Identifier>,
-    pub ty: Located<Type>,
+    pub name: Spanned<Identifier>,
+    pub ty: Spanned<Type>,
 }
 
 impl TypedParam {
-    pub fn new(name: Located<Identifier>, ty: Located<Type>) -> TypedParam {
+    pub fn new(name: Spanned<Identifier>, ty: Spanned<Type>) -> TypedParam {
         TypedParam { name, ty }
     }
 }
@@ -54,7 +54,7 @@ pub struct Return {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Break {
-    pub span: Located<()>,
+    pub span: Spanned<()>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -71,5 +71,5 @@ pub struct Loop {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Empty {
-    pub span: Located<()>,
+    pub span: Spanned<()>,
 }

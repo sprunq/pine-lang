@@ -8,7 +8,7 @@ base = { path = "../base" }
 messages = { path = "../messages" }
 derive_more = {version = "0.99.17", default-features = false, features = ["display"]}
 internment = "0.7.0"
-serde = { version = "1.0", features = ["derive"] }
+serde = { workspace = true }
 
 
 [dev-dependencies]

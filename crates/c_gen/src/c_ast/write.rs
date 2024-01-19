@@ -2,14 +2,9 @@ use crate::c_ast::ast::*;
 use crate::c_ast::op::{CAssignmentOperator, CBinaryOperator, CUnaryOperator};
 use crate::c_ast::ty::CType;
 
+#[derive(Default)]
 pub struct CAstWriter {
     string: Vec<String>,
-}
-
-impl Default for CAstWriter {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl CAstWriter {

@@ -1,10 +1,10 @@
-use base::{located::Located, source_id::SourceId};
+use base::{located::SourceLocated, source_id::SourceId};
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum LexerError {
-    UnexpectedInput { token: Located<String> },
-    UnterminatedString { location: Located<()> },
+    UnexpectedInput { token: SourceLocated<String> },
+    UnterminatedString { location: SourceLocated<()> },
 }
 
 impl LexerError {
@@ -37,10 +37,13 @@ impl LexerError {
     pub fn labels(&self) -> Vec<codespan_reporting::diagnostic::Label<SourceId>> {
         match self {
             LexerError::UnexpectedInput { token } => {
-                vec![Label::primary(token.source, token.span.clone())]
+                vec![Label::primary(token.source, token.located.span.clone())]
             }
             LexerError::UnterminatedString { location } => {
-                vec![Label::primary(location.source, location.span.clone())]
+                vec![Label::primary(
+                    location.source,
+                    location.located.span.clone(),
+                )]
             }
         }
     }

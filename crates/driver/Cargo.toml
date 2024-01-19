@@ -7,4 +7,4 @@ edition = "2021"
 base = { path = "../base" }
 syntax = { path = "../syntax" }
 messages = { path = "../messages" }
-codespan-reporting = "0.9.5"
+codespan-reporting = { workspace = true }

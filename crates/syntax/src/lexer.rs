@@ -1,5 +1,5 @@
 use crate::token::Token;
-use base::{located::Located, source_id::SourceId};
+use base::{located::Spanned, source_id::SourceId};
 use internment::Intern;
 use std::{cmp::Ordering, collections::VecDeque};
 
@@ -9,12 +9,12 @@ pub struct Lexer<'source> {
     pub file_id: SourceId,
     ch_pos: usize,
     prev_line_indent: usize,
-    buffer: VecDeque<Located<Token>>,
+    buffer: VecDeque<Spanned<Token>>,
     reached_eof: bool,
 }
 
 impl<'source> Iterator for Lexer<'source> {
-    type Item = Located<Token>;
+    type Item = Spanned<Token>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.reached_eof {
             return None;
@@ -44,7 +44,7 @@ impl<'source> Lexer<'source> {
         }
     }
 
-    fn next_token(&mut self) -> Located<Token> {
+    fn next_token(&mut self) -> Spanned<Token> {
         if let Some(t) = self.buffer.pop_front() {
             return t;
         }
@@ -71,11 +71,7 @@ impl<'source> Lexer<'source> {
                 // we can only return one token at a time, so we need to buffer the extra indents
                 let mut push_extra_indents_to_buffer = |token: Token| {
                     for i in 0..steps_diff - 1 {
-                        let t = Located::new(
-                            self.file_id,
-                            line_start + 4 * i..line_start + 4 * i + 4,
-                            token.clone(),
-                        );
+                        let t = Spanned::new(line_start + 4 * i..line_start + 4 * i + 4, token);
                         self.buffer.push_back(t);
                     }
                 };
@@ -235,7 +231,7 @@ impl<'source> Lexer<'source> {
                 }
             }
         };
-        Located::new(self.file_id, start_pos..self.ch_pos, tok)
+        Spanned::new(start_pos..self.ch_pos, tok)
     }
 
     #[inline]

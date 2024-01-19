@@ -8,6 +8,7 @@ use syntax::ast::Program;
 use syntax::ast::{expr::*, DeclS};
 use syntax::*;
 
+#[derive(Default)]
 pub struct AstToCAst {
     // We need to keep track of the structs we've seen so we can generate the
     // new_gc functions for them since we need the type information.
@@ -494,11 +495,5 @@ impl AstToCAst {
     fn pointer_to_struct<S: AsRef<str>>(ty: S) -> CType {
         let ty = CType::Struct(ty.as_ref().to_string());
         CType::Pointer(Box::new(ty))
-    }
-}
-
-impl Default for AstToCAst {
-    fn default() -> Self {
-        Self::new()
     }
 }

@@ -5,17 +5,12 @@ use std::{
     process::{Command, Stdio},
 };
 
+#[derive(Default)]
 pub struct Gcc {}
 
 impl Gcc {
     pub fn new() -> Self {
         Self {}
-    }
-}
-
-impl Default for Gcc {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

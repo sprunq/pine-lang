@@ -14,12 +14,11 @@ impl<'a> Compiler<'a> {
 
     pub fn compile(&mut self, msg_sender: Sender<Message>) {
         let source_id = SourceId::from_path(&self.context.build_pkg);
-
         let file_content = self.context.file_cache.fetch(source_id).unwrap();
 
-        let lexer = Lexer::new(source_id, &file_content);
+        let lexer = Lexer::new(source_id, file_content);
 
-        let parsed = match Parser::parse(lexer) {
+        let parsed = match Parser::parse(lexer, source_id) {
             Ok(parsed) => parsed,
             Err(e) => {
                 msg_sender.send(e).expect("Failed to send message");

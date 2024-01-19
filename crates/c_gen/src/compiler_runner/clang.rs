@@ -4,17 +4,12 @@ use std::{
     process::{Command, Stdio},
 };
 
+#[derive(Default)]
 pub struct Clang {}
 
 impl Clang {
     pub fn new() -> Self {
         Self {}
-    }
-}
-
-impl Default for Clang {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

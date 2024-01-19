@@ -4,6 +4,7 @@ use std::{
     sync::{mpsc::Sender, Arc, Mutex},
 };
 
+#[derive(Default)]
 pub struct MessageStream {
     messages: Arc<Mutex<VecDeque<Message>>>,
 }

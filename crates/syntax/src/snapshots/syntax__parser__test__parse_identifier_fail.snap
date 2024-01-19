@@ -6,9 +6,11 @@ expression: parsed
   "Err": {
     "UnrecognizedToken": {
       "found": {
-        "span": "",
         "source": "",
-        "value": "1"
+        "located": {
+          "span": "",
+          "value": "1"
+        }
       },
       "expected": "identifier"
     }

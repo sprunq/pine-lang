@@ -9,7 +9,7 @@ use crate::{
     },
     token::Token,
 };
-use base::located::Located;
+use base::{located::Spanned, source_id::SourceId};
 use messages::{message::Message, parser::ParserError};
 
 #[allow(dead_code)]
@@ -19,27 +19,29 @@ struct Precedence {
 
 pub struct Parser<I> {
     tokens: I,
-    current: Located<Token>,
-    peek: Located<Token>,
+    source_id: SourceId,
+    current: Spanned<Token>,
+    peek: Spanned<Token>,
 }
 
 impl<I> Parser<I>
 where
-    I: Iterator<Item = Located<Token>>,
+    I: Iterator<Item = Spanned<Token>>,
 {
-    pub fn new(tokens: I) -> Self {
+    pub fn new(tokens: I, source_id: SourceId) -> Self {
         let mut p = Self {
             tokens,
-            current: Located::new("", 0..0, Token::Plus), // dummy value
-            peek: Located::new("", 0..0, Token::Plus),    // dummy value
+            source_id,
+            current: Spanned::new(0..0, Token::Plus), // dummy value
+            peek: Spanned::new(0..0, Token::Plus),    // dummy value
         };
         p.next(); // read first to peek
         p.next(); // move peek to current and read next
         p
     }
 
-    pub fn parse(tokens: I) -> Result<Program, Message> {
-        let mut parser = Parser::new(tokens);
+    pub fn parse(tokens: I, source_id: SourceId) -> Result<Program, Message> {
+        let mut parser = Parser::new(tokens, source_id);
         parser.parse_program().map_err(|e| e.into())
     }
 
@@ -59,7 +61,11 @@ where
 
     fn expect(&mut self, expected: Token) -> Result<(), ParserError> {
         if self.current.value != expected {
-            return Err(ParserError::new_unrecognized_token(&self.current, expected));
+            return Err(ParserError::new_unrecognized_token(
+                self.source_id,
+                &self.current,
+                expected,
+            ));
         }
         self.next();
         Ok(())
@@ -70,7 +76,10 @@ where
         while self.peek_v() != Token::Eof {
             stmts.push(self.parse_top_level()?);
         }
-        Ok(Program { stmts })
+        Ok(Program {
+            stmts,
+            source: self.source_id,
+        })
     }
 
     fn parse_top_level(&mut self) -> Result<TopLevelS, ParserError> {
@@ -96,7 +105,7 @@ where
         todo!()
     }
 
-    fn parse_identifier(&mut self) -> Result<Located<Identifier>, ParserError> {
+    fn parse_identifier(&mut self) -> Result<Spanned<Identifier>, ParserError> {
         if let Token::Identifier(ident) = &self.current.value {
             let ident = ident.as_str().into();
             let ident = self.current.with_new_value(ident);
@@ -104,6 +113,7 @@ where
             Ok(ident)
         } else {
             Err(ParserError::new_unrecognized_token(
+                self.source_id,
                 &self.current,
                 "identifier",
             ))
@@ -138,7 +148,7 @@ where
         Ok(params)
     }
 
-    fn parse_type(&mut self) -> Result<Located<Type>, ParserError> {
+    fn parse_type(&mut self) -> Result<Spanned<Type>, ParserError> {
         let ty = match self.current.value {
             Token::TyBool => Type::Bool,
             Token::TyI8 => Type::I8,
@@ -151,7 +161,12 @@ where
             Token::TyF64 => Type::F64,
             Token::TyStr => Type::String,
             Token::Identifier(ident) => Type::Struct(ident.as_str().into()),
-            _ => return Err(ParserError::new_expected_type(&self.current)),
+            _ => {
+                return Err(ParserError::new_expected_type(
+                    self.source_id,
+                    &self.current,
+                ))
+            }
         };
 
         Ok(self.current.with_new_value(ty))
@@ -173,14 +188,13 @@ mod test {
         static ref SETTINGS: insta::Settings = {
             let mut settings = insta::Settings::new();
             settings.add_redaction(".**.span", "");
-            settings.add_redaction(".**.source", "");
             settings
         };
     }
 
     fn parser(input: &str) -> Parser<lexer::Lexer<'_>> {
         let tokens = Lexer::new(SourceId::from_path(""), input);
-        Parser::new(tokens)
+        Parser::new(tokens, "".into())
     }
 
     #[test]

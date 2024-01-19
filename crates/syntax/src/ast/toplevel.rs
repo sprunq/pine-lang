@@ -3,7 +3,7 @@ use super::{
     stmt::{Block, TypedParam},
     TypeS,
 };
-use base::located::Located;
+use base::located::Spanned;
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]
@@ -14,7 +14,7 @@ pub enum TopLevelDeclaration {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct FunctionDeclaration {
-    pub name: Located<Identifier>,
+    pub name: Spanned<Identifier>,
     pub params: Vec<TypedParam>,
     pub ret_ty: TypeS,
     pub body: Block,
@@ -22,7 +22,7 @@ pub struct FunctionDeclaration {
 
 impl FunctionDeclaration {
     pub fn new(
-        name: Located<Identifier>,
+        name: Spanned<Identifier>,
         params: Vec<TypedParam>,
         ret_ty: TypeS,
         body: Block,

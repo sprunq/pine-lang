@@ -5,18 +5,19 @@ pub mod toplevel;
 pub mod types;
 
 use self::{toplevel::TopLevelDeclaration, types::Type};
-use base::located::Located;
+use base::{located::Spanned, source_id::SourceId};
 use expr::Expr;
 use serde::Serialize;
 use stmt::Stmt;
 
-pub type StmtS = Located<Stmt>;
-pub type ExprS = Located<Expr>;
-pub type TopLevelS = Located<TopLevelDeclaration>;
-pub type TypeS = Located<Type>;
+pub type StmtS = Spanned<Stmt>;
+pub type ExprS = Spanned<Expr>;
+pub type TopLevelS = Spanned<TopLevelDeclaration>;
+pub type TypeS = Spanned<Type>;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Program {
+    pub source: SourceId,
     pub stmts: Vec<TopLevelS>,
 }
 

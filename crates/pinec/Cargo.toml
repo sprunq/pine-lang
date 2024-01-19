@@ -9,4 +9,4 @@ base = { path = "../base" }
 driver = { path = "../driver" }
 messages = { path = "../messages" }
 clap = { version = "4.2.1", features = ["derive"] }
-codespan-reporting = "0.9.5"
+codespan-reporting = { workspace = true }
