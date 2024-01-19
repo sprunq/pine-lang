@@ -5,5 +5,4 @@ members = ["crates/pinec"]
 [workspace.dependencies]
 serde = { version = "1.0", features = ["derive"] }
 codespan-reporting = "0.9.5"
-
-
+internment = "0.7.0"

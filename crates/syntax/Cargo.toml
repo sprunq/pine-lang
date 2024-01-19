@@ -6,15 +6,15 @@ edition = "2021"
 [dependencies]
 base = { path = "../base" }
 messages = { path = "../messages" }
-derive_more = {version = "0.99.17", default-features = false, features = ["display"]}
-internment = "0.7.0"
+internment = { workspace = true }
 serde = { workspace = true }
-
+derive_more = { version = "0.99.17", default-features = false, features = [
+    "display",
+] }
 
 [dev-dependencies]
-insta = { version= "1.34.0", features = ["redactions", "json"] }
+insta = { version = "1.34.0", features = ["redactions", "json"] }
 lazy_static = "1.4.0"
-
 
 [profile.dev.package]
 insta.opt-level = 3

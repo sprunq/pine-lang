@@ -6,5 +6,3 @@ edition = "2021"
 [dependencies]
 base = { path = "../base" }
 syntax = { path = "../syntax" }
-
-[build-dependencies] 
