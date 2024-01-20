@@ -16,20 +16,10 @@ impl<'a> Compiler<'a> {
         let file_content = self.context.file_cache.fetch(source_id).unwrap();
 
         let lexer = Lexer::new(source_id, file_content);
-
-        let start = std::time::Instant::now();
-        for t in lexer {
-            let _x = std::hint::black_box(t);
-        }
-        let end = std::time::Instant::now();
-        dbg!(end - start);
-
-        return Ok(());
-
         let parsed = match Parser::parse(lexer, source_id) {
             Ok(parsed) => parsed,
             Err(e) => {
-                return Ok(());
+                return Err(e);
             }
         };
 
