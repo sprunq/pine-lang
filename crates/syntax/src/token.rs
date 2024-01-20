@@ -5,8 +5,8 @@ pub enum Token {
     #[display(fmt = "indent")]
     Indent,
 
-    #[display(fmt = "unindent")]
-    UnIndent,
+    #[display(fmt = "dedent")]
+    Dedent,
 
     #[display(fmt = "newline")]
     NewLine,

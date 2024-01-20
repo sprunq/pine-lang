@@ -79,7 +79,7 @@ impl<'source> Lexer<'source> {
                 match indent_steps.cmp(&prev_indent_steps) {
                     Ordering::Less => {
                         self.prev_line_indent = indent;
-                        push_indents_to_buffer(Token::UnIndent);
+                        push_indents_to_buffer(Token::Dedent);
                         Token::NewLine
                     }
                     Ordering::Equal => Token::NewLine,
@@ -360,7 +360,7 @@ hello
                 Token::NewLine,
                 Token::Identifier("man".to_string().into()),
                 Token::NewLine,
-                Token::UnIndent,
+                Token::Dedent,
             ],
         )
     }
@@ -386,8 +386,8 @@ hello
                 Token::NewLine,
                 Token::Identifier("man".to_string().into()),
                 Token::NewLine,
-                Token::UnIndent,
-                Token::UnIndent,
+                Token::Dedent,
+                Token::Dedent,
             ],
         )
     }
@@ -405,8 +405,8 @@ world
                 Token::Indent,
                 Token::Identifier("hello".to_string().into()),
                 Token::NewLine,
-                Token::UnIndent,
-                Token::UnIndent,
+                Token::Dedent,
+                Token::Dedent,
                 Token::Identifier("world".to_string().into()),
                 Token::NewLine,
             ],
@@ -432,10 +432,10 @@ hello
                 Token::Indent,
                 Token::Identifier("yo".to_string().into()),
                 Token::NewLine,
-                Token::UnIndent,
+                Token::Dedent,
                 Token::Identifier("man".to_string().into()),
                 Token::NewLine,
-                Token::UnIndent,
+                Token::Dedent,
             ],
         )
     }
