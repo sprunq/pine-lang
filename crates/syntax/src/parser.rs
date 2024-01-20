@@ -255,7 +255,7 @@ mod test {
             .join("test_inputs")
             .join("parser")
             .join(s)
-            .with_extension("txt");
+            .with_extension("pine");
         let read_result = std::fs::read_to_string(&path);
         assert!(read_result.is_ok(), "failed to read file: {:?}", path);
         read_result.unwrap()
