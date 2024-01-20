@@ -2,6 +2,7 @@ use crate::{lexer::LexerError, parser::ParserError};
 use base::source_id::SourceId;
 use codespan_reporting::diagnostic::Diagnostic;
 
+#[derive(Debug, Clone, serde::Serialize)]
 pub enum Message {
     Lexer(LexerError),
     Parse(ParserError),

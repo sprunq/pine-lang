@@ -10,7 +10,7 @@ use crate::{
     token::Token,
 };
 use base::{located::Spanned, source_id::SourceId};
-use messages::{message::Message, parser::ParserError};
+use messages::{lexer::LexerError, message::Message, parser::ParserError};
 
 #[allow(dead_code)]
 struct Precedence {
@@ -36,7 +36,7 @@ pub struct Parser<I> {
 
 impl<I> Parser<I>
 where
-    I: Iterator<Item = Spanned<Token>>,
+    I: Iterator<Item = Result<Spanned<Token>, LexerError>>,
 {
     pub fn new(tokens: I, source_id: SourceId) -> Self {
         let mut p = Self {
@@ -45,24 +45,37 @@ where
             current: Spanned::new(0..0, Token::Plus), // dummy value
             peek: Spanned::new(0..0, Token::Plus),    // dummy value
         };
-        p.next(); // read first to peek
-        p.next(); // move peek to current and read next
+        p.next().unwrap(); // read first to peek
+        p.next().unwrap(); // move peek to current and read next
         p
     }
 
     pub fn parse(tokens: I, source_id: SourceId) -> Result<Program, Message> {
         let mut parser = Parser::new(tokens, source_id);
-        parser.parse_program().map_err(|e| e.into())
+        parser.parse_program()
     }
 
-    fn next(&mut self) {
+    fn next(&mut self) -> Result<(), Message> {
         if self.peek_v() == Token::Eof {
             self.current = self.peek.clone();
-            return;
+            return Ok(());
         }
-        let new_peek = self.tokens.next().expect("no more tokens");
-        std::mem::swap(&mut self.current, &mut self.peek);
-        self.peek = new_peek;
+        let new_peek = self.tokens.next();
+        match new_peek {
+            Some(new_peek) => match new_peek {
+                Ok(new_peek) => {
+                    std::mem::swap(&mut self.current, &mut self.peek);
+                    self.peek = new_peek;
+                    Ok(())
+                }
+                Err(e) => Err(e.into()),
+            },
+            None => Err(ParserError::new_unexpected_eof(
+                self.source_id,
+                self.peek.clone().map_value(|_| ()),
+            )
+            .into()),
+        }
     }
 
     fn peek_v(&self) -> Token {
@@ -73,19 +86,20 @@ where
         self.current.value
     }
 
-    fn expect(&mut self, expected: Token) -> Result<(), ParserError> {
+    fn expect(&mut self, expected: Token) -> Result<(), Message> {
         if self.current.value != expected {
             return Err(ParserError::new_unrecognized_token(
                 self.source_id,
                 self.current.clone(),
                 expected,
-            ));
+            )
+            .into());
         }
-        self.next();
+        self.next().unwrap();
         Ok(())
     }
 
-    fn parse_program(&mut self) -> Result<Program, ParserError> {
+    fn parse_program(&mut self) -> Result<Program, Message> {
         let mut stmts = Vec::new();
         while self.peek_v() != Token::Eof {
             stmts.push(self.parse_top_level()?);
@@ -96,7 +110,7 @@ where
         })
     }
 
-    fn parse_top_level(&mut self) -> Result<TopLevelS, ParserError> {
+    fn parse_top_level(&mut self) -> Result<TopLevelS, Message> {
         match self.current_v() {
             Token::Fun => self.parse_func_decl().map(|e| e.map_value(|e| e.into())),
             Token::Type => self.parse_type_object().map(|e| e.map_value(|e| e.into())),
@@ -104,13 +118,14 @@ where
                 self.source_id,
                 self.current.clone(),
                 "top level declaration",
-            )),
+            )
+            .into()),
         }
     }
 
     /// fun ident(a : Alpha, b : u64) -> u64:
     ///    block
-    fn parse_func_decl(&mut self) -> Result<Spanned<FunctionDeclaration>, ParserError> {
+    fn parse_func_decl(&mut self) -> Result<Spanned<FunctionDeclaration>, Message> {
         spanned!(self, {
             self.expect(Token::Fun)?;
             let name = self.parse_identifier()?;
@@ -125,31 +140,32 @@ where
         })
     }
 
-    fn parse_type_object(&mut self) -> Result<Spanned<TypeObject>, ParserError> {
+    fn parse_type_object(&mut self) -> Result<Spanned<TypeObject>, Message> {
         todo!()
     }
 
-    fn parse_identifier(&mut self) -> Result<Spanned<Identifier>, ParserError> {
+    fn parse_identifier(&mut self) -> Result<Spanned<Identifier>, Message> {
         if let Token::Identifier(ident) = &self.current.value {
             let ident = ident.as_str().into();
             let ident = self.current.with_new_value(ident);
-            self.next();
+            self.next()?;
             Ok(ident)
         } else {
             Err(ParserError::new_unrecognized_token(
                 self.source_id,
                 self.current.clone(),
                 "identifier",
-            ))
+            )
+            .into())
         }
     }
 
     /// [ ident : type, ident : type, ... ]
-    fn parse_typed_params(&mut self) -> Result<Vec<TypedParam>, ParserError> {
+    fn parse_typed_params(&mut self) -> Result<Vec<TypedParam>, Message> {
         let mut params = Vec::new();
 
         // indent : type
-        let mut parse_one = |this: &mut Self| -> Result<(), ParserError> {
+        let mut parse_one = |this: &mut Self| -> Result<(), Message> {
             let name = this.parse_identifier()?;
             this.expect(Token::Colon)?;
             let ty = this.parse_type()?;
@@ -164,7 +180,7 @@ where
 
         // all next params are delimited by comma
         while self.current_v() == Token::Comma {
-            self.next();
+            self.next()?;
             // parse next param
             parse_one(self)?;
         }
@@ -172,7 +188,7 @@ where
         Ok(params)
     }
 
-    fn parse_type(&mut self) -> Result<Spanned<Type>, ParserError> {
+    fn parse_type(&mut self) -> Result<Spanned<Type>, Message> {
         let ty = match self.current.value {
             Token::TyBool => Type::Bool,
             Token::TyI8 => Type::I8,
@@ -184,19 +200,19 @@ where
             Token::TyF32 => Type::F32,
             Token::TyF64 => Type::F64,
             Token::TyStr => Type::String,
+            Token::Underscore => Type::Unit,
             Token::Identifier(ident) => Type::Struct(ident.as_str().into()),
             _ => {
-                return Err(ParserError::new_expected_type(
-                    self.source_id,
-                    self.current.clone(),
-                ))
+                return Err(
+                    ParserError::new_expected_type(self.source_id, self.current.clone()).into(),
+                )
             }
         };
-        self.next();
+        self.next()?;
         Ok(self.current.with_new_value(ty))
     }
 
-    fn parse_block(&mut self) -> Result<Spanned<Block>, ParserError> {
+    fn parse_block(&mut self) -> Result<Spanned<Block>, Message> {
         todo!("Not finished");
 
         let mut stmts = Vec::new();
@@ -212,7 +228,7 @@ where
         Ok(spanned)
     }
 
-    fn parse_stmt(&mut self) -> Result<Spanned<Stmt>, ParserError> {
+    fn parse_stmt(&mut self) -> Result<Spanned<Stmt>, Message> {
         todo!()
     }
 }

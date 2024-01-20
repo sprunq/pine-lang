@@ -51,12 +51,12 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
-pub struct SourceLocated<T> {
+pub struct Located<T> {
     pub source: SourceId,
     pub located: Spanned<T>,
 }
 
-impl<T> SourceLocated<T> {
+impl<T> Located<T> {
     pub fn new(source: SourceId, value: Spanned<T>) -> Self {
         Self {
             source,

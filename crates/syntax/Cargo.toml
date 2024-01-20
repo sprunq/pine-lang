@@ -8,13 +8,12 @@ base = { path = "../base" }
 messages = { path = "../messages" }
 internment = { workspace = true }
 serde = { workspace = true }
-derive_more = { version = "0.99.17", default-features = false, features = [
-    "display",
-] }
+derive_more = { workspace = true, features = ["display"] }
+
 
 [dev-dependencies]
-insta = { version = "1.34.0", features = ["redactions", "json"] }
-lazy_static = "1.4.0"
+insta = { workspace = true, features = ["redactions", "json"] }
+lazy_static = { workspace = true }
 
 [profile.dev.package]
 insta.opt-level = 3

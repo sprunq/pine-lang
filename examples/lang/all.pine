@@ -4,7 +4,7 @@ type Alpha[T, E]:
     t : T
     e : E
 
-    fun new(a : u32, b : u32, t : T, e : E) -> Self {
+    fun new(a : u32, b : u32, t : T, e : E) -> self {
         return Alpha[T,E] {a,b,t,e}
     }
 
@@ -49,7 +49,7 @@ fun add_alpha_beta(alpha : Alpha, i : u64) -> u64:
     return alpha.a + i
 
 
-fun main() -> ():
+fun main() -> _:
     let i : u32 = 0
 
     let a = Alpha[u8, str]::new(42, 77, 2, "hello world")

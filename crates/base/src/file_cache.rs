@@ -1,4 +1,5 @@
 use crate::source_id::SourceId;
+use codespan_reporting::files::Error as CodeSpanError;
 use codespan_reporting::files::{line_starts, Files};
 use std::collections::{hash_map::Entry, HashMap};
 use std::fs;
@@ -57,31 +58,36 @@ impl<'a> Files<'a> for FileCache {
     type Name = String;
     type Source = &'a str;
 
-    fn name(&'a self, id: Self::FileId) -> Option<Self::Name> {
-        Some(id.to_string())
+    fn name(&'a self, id: Self::FileId) -> Result<Self::Name, CodeSpanError> {
+        Ok(id.to_string())
     }
 
-    fn source(&'a self, id: Self::FileId) -> Option<Self::Source> {
-        self.files.get(&id).map(|s| s.as_str())
+    fn source(&'a self, id: Self::FileId) -> Result<Self::Source, CodeSpanError> {
+        let opt = self.files.get(&id).map(|s| s.as_str());
+        opt.ok_or(CodeSpanError::FileMissing)
     }
 
-    fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Option<usize> {
+    fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Result<usize, CodeSpanError> {
         let s = self.source(id)?;
 
         let line_starts = line_starts(s).collect::<Vec<_>>();
         match line_starts.binary_search(&byte_index) {
-            Ok(line) => Some(line),
-            Err(next_line) => Some(next_line - 1),
+            Ok(line) => Ok(line),
+            Err(next_line) => Ok(next_line - 1),
         }
     }
 
-    fn line_range(&'a self, id: Self::FileId, line_index: usize) -> Option<Range<usize>> {
+    fn line_range(
+        &'a self,
+        id: Self::FileId,
+        line_index: usize,
+    ) -> Result<Range<usize>, CodeSpanError> {
         let s = self.source(id)?;
 
         let line_starts = line_starts(s).collect::<Vec<_>>();
-        let start = line_starts.get(line_index).copied()?;
+        let start = line_starts.get(line_index).copied().unwrap();
         let end = line_starts.get(line_index + 1).copied().unwrap_or(s.len());
-        Some(start..end)
+        Ok(start..end)
     }
 }
 

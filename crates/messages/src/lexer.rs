@@ -1,10 +1,10 @@
-use base::{located::SourceLocated, source_id::SourceId};
+use base::{located::Located, source_id::SourceId};
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, serde::Serialize)]
 pub enum LexerError {
-    UnexpectedInput { token: SourceLocated<String> },
-    UnterminatedString { location: SourceLocated<()> },
+    UnexpectedCharacter { token: Located<char> },
+    IndentationNotMultipleFour { token: Located<()>, found: usize },
 }
 
 impl LexerError {
@@ -22,40 +22,47 @@ impl LexerError {
 
     pub fn code(&self) -> usize {
         match self {
-            LexerError::UnexpectedInput { .. } => 0,
-            LexerError::UnterminatedString { .. } => 1,
+            LexerError::UnexpectedCharacter { .. } => 0,
+            LexerError::IndentationNotMultipleFour { .. } => 1,
         }
     }
 
     pub fn message(&self) -> &str {
         match self {
-            LexerError::UnexpectedInput { .. } => "unexpected input",
-            LexerError::UnterminatedString { .. } => "unterminated string",
+            LexerError::UnexpectedCharacter { .. } => "unexpected input",
+            LexerError::IndentationNotMultipleFour { .. } => "invalid indentation",
         }
     }
 
     pub fn labels(&self) -> Vec<codespan_reporting::diagnostic::Label<SourceId>> {
         match self {
-            LexerError::UnexpectedInput { token } => {
+            LexerError::UnexpectedCharacter { token } => {
                 vec![Label::primary(token.source, token.located.span.clone())]
             }
-            LexerError::UnterminatedString { location } => {
-                vec![Label::primary(
-                    location.source,
-                    location.located.span.clone(),
-                )]
+            LexerError::IndentationNotMultipleFour { token, .. } => {
+                vec![Label::primary(token.source, token.located.span.clone())]
             }
         }
     }
 
     pub fn notes(&self) -> Vec<String> {
-        vec![]
+        match self {
+            LexerError::UnexpectedCharacter { .. } => {
+                vec![]
+            }
+            LexerError::IndentationNotMultipleFour { found, .. } => {
+                vec![format!(
+                    "indentation must be a multiple of 4, but found {}",
+                    found
+                )]
+            }
+        }
     }
 
     pub fn origin(&self) -> SourceId {
         match self {
-            LexerError::UnexpectedInput { token } => token.source,
-            LexerError::UnterminatedString { location } => location.source,
+            LexerError::UnexpectedCharacter { token } => token.source,
+            LexerError::IndentationNotMultipleFour { token, .. } => token.source,
         }
     }
 }

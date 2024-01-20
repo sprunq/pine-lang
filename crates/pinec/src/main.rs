@@ -1,7 +1,7 @@
 use base::{compile_context::CompileContext, file_cache::FileCache};
 use clap::{arg, command, Parser};
 use codespan_reporting::term::termcolor::{BufferedStandardStream, ColorChoice};
-use std::{env, path::PathBuf, sync};
+use std::{env, path::PathBuf};
 
 extern crate driver;
 
@@ -54,23 +54,24 @@ fn main() {
     }
     std::fs::create_dir_all(&context.build_dir).expect("Failed to create build directory");
 
-    let (msg_sender, msg_recv) = sync::mpsc::channel();
-
     let mut compiler = driver::Compiler::new(&mut context);
-    compiler.compile(msg_sender);
+    let res = compiler.compile();
 
     let mut writer = BufferedStandardStream::stderr(ColorChoice::Always);
     let reporting_config = codespan_reporting::term::Config::default();
 
-    for msg in msg_recv.try_iter() {
-        let diagnostic = msg.as_diagnostic();
+    match res {
+        Ok(_) => {}
+        Err(e) => {
+            let diagnostic = e.as_diagnostic();
 
-        codespan_reporting::term::emit(
-            &mut writer,
-            &reporting_config,
-            &context.file_cache,
-            &diagnostic,
-        )
-        .unwrap();
+            codespan_reporting::term::emit(
+                &mut writer,
+                &reporting_config,
+                &context.file_cache,
+                &diagnostic,
+            )
+            .unwrap();
+        }
     }
 }

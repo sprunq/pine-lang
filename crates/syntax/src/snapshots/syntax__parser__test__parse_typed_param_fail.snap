@@ -4,15 +4,17 @@ expression: parsed
 ---
 {
   "Err": {
-    "UnrecognizedToken": {
-      "found": {
-        "source": "",
-        "located": {
-          "span": "",
-          "value": "EOF"
-        }
-      },
-      "expected": ":"
+    "Parse": {
+      "UnrecognizedToken": {
+        "found": {
+          "source": "",
+          "located": {
+            "span": "",
+            "value": "EOF"
+          }
+        },
+        "expected": ":"
+      }
     }
   }
 }

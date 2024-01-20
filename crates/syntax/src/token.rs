@@ -14,6 +14,9 @@ pub enum Token {
     #[display(fmt = "EOF")]
     Eof,
 
+    #[display(fmt = "_")]
+    Underscore,
+
     /// `(`
     #[display(fmt = "(")]
     LParen,

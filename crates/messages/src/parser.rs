@@ -1,5 +1,5 @@
 use base::{
-    located::{SourceLocated, Spanned},
+    located::{Located, Spanned},
     source_id::SourceId,
 };
 use codespan_reporting::diagnostic::{Diagnostic, Label};
@@ -7,14 +7,14 @@ use codespan_reporting::diagnostic::{Diagnostic, Label};
 #[derive(Debug, PartialEq, Clone, serde::Serialize)]
 pub enum ParserError {
     UnexpectedEof {
-        location: SourceLocated<()>,
+        location: Located<()>,
     },
     UnrecognizedToken {
-        found: SourceLocated<String>,
+        found: Located<String>,
         expected: String,
     },
     ExpectedType {
-        found: SourceLocated<String>,
+        found: Located<String>,
     },
 }
 
@@ -29,7 +29,7 @@ impl ParserError {
         E: ToString,
     {
         let token = found.map_value(|t| t.to_string());
-        let source_loc = SourceLocated::new(source_id, token);
+        let source_loc = Located::new(source_id, token);
         let expected = expected.to_string();
         ParserError::UnrecognizedToken {
             found: source_loc,
@@ -42,8 +42,16 @@ impl ParserError {
         F: ToString,
     {
         let token = found.map_value(|t| t.to_string());
-        let source_loc = SourceLocated::new(source_id, token);
+        let source_loc = Located::new(source_id, token);
         ParserError::ExpectedType { found: source_loc }
+    }
+
+    pub fn new_unexpected_eof(source_id: SourceId, location: Spanned<()>) -> ParserError {
+        let location = location.map_value(|_| ());
+        let source_loc = Located::new(source_id, location);
+        ParserError::UnexpectedEof {
+            location: source_loc,
+        }
     }
 
     pub fn as_diagnostic(&self) -> Diagnostic<SourceId> {

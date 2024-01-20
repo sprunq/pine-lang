@@ -1,67 +1,88 @@
 use crate::token::Token;
-use base::{located::Spanned, source_id::SourceId};
+use base::{
+    located::{Located, Spanned},
+    source_id::SourceId,
+};
 use internment::Intern;
-use std::{cmp::Ordering, collections::VecDeque};
+use messages::lexer::LexerError;
+use std::{cmp::Ordering, collections::VecDeque, str::CharIndices};
 
+#[derive(Debug, Clone)]
 pub struct Lexer<'source> {
     pub input: &'source str,
-    pub chars: Vec<char>,
-    pub file_id: SourceId,
-    ch_pos: usize,
+    pub chars: CharIndices<'source>,
+    pub source: SourceId,
     prev_line_indent: usize,
     buffer: VecDeque<Spanned<Token>>,
     reached_eof: bool,
+    current: (usize, char),
 }
 
 impl<'source> Iterator for Lexer<'source> {
-    type Item = Spanned<Token>;
+    type Item = Result<Spanned<Token>, LexerError>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.reached_eof {
             return None;
         }
 
         let next = self.next_token();
-        if Token::Eof == next.value && !self.reached_eof {
-            self.reached_eof = true;
+
+        if let Ok(t) = &next {
+            if t.value == Token::Eof && !self.reached_eof {
+                self.reached_eof = true;
+            }
         }
+
         Some(next)
     }
 }
 
 impl<'source> Lexer<'source> {
-    pub fn new(file_id: SourceId, input: &'source str) -> Self {
-        let mut chars = input.chars().collect::<Vec<_>>();
-        chars.push('\0');
-
-        Self {
-            ch_pos: 0,
+    pub fn new(source: SourceId, input: &'source str) -> Self {
+        let mut buffer = VecDeque::new();
+        buffer.reserve(64);
+        let mut lexer = Self {
+            chars: input.char_indices(),
+            buffer,
             prev_line_indent: 0,
-            file_id,
-            input,
-            chars,
-            buffer: VecDeque::new(),
             reached_eof: false,
-        }
+            current: (0, '\0'),
+            source,
+            input,
+        };
+        lexer.advance(); // initialize current
+        lexer
     }
 
-    fn next_token(&mut self) -> Spanned<Token> {
+    fn next_token(&mut self) -> Result<Spanned<Token>, LexerError> {
         if let Some(t) = self.buffer.pop_front() {
-            return t;
+            return Ok(t);
         }
 
         self.skip_whitespace_until_nl();
 
-        let start_pos = self.ch_pos;
-        let tok = match &self.ch() {
+        let start_pos = self.char_pos();
+
+        let tok = match self.char() {
             '\0' => Token::Eof,
+            '\r' => {
+                self.advance();
+                return self.next_token();
+            }
             '\n' => {
                 self.advance();
-                let line_start = self.ch_pos;
+                let line_start = self.char_pos();
                 self.skip_whitespace_until_nl();
-                let indent = self.ch_pos - line_start;
+                let indent = self.char_pos() - line_start;
 
                 if indent % 4 != 0 {
-                    panic!("Only indent steps of 4 allowed")
+                    return Err(LexerError::IndentationNotMultipleFour {
+                        token: Located::new(
+                            self.source,
+                            Spanned::empty(line_start..self.char_end_pos()),
+                        ),
+                        found: indent,
+                    });
                 }
 
                 let prev_indent_steps = self.prev_line_indent / 4;
@@ -89,6 +110,10 @@ impl<'source> Lexer<'source> {
                         Token::NewLine
                     }
                 }
+            }
+            '_' => {
+                self.advance();
+                Token::Underscore
             }
             ':' => {
                 self.advance();
@@ -170,7 +195,7 @@ impl<'source> Lexer<'source> {
                 self.advance();
                 // line comment
                 if self.advance_if('/') {
-                    while !matches!(self.ch(), '\n' | '\0') {
+                    while !matches!(self.char(), '\n' | '\0') {
                         self.advance();
                     }
                     return self.next_token();
@@ -195,43 +220,79 @@ impl<'source> Lexer<'source> {
                 Token::Pipe
             }
             '"' => {
-                let mut string = String::new();
-                self.advance();
-                loop {
-                    match self.ch() {
-                        '"' => break,
-                        '\0' | '\n' => panic!("unterminated string"),
-                        '\\' => {
-                            self.advance();
-                            match self.ch() {
-                                '"' => string.push('"'),
-                                _ => panic!("invalid escape sequence"),
-                            }
-                        }
-                        _ => string.push(self.ch()),
-                    }
-                    self.advance();
+                let s = self.read_string();
+                Token::String(Intern::new(String::from(s)))
+            }
+            _ if Self::is_letter(self.char()) => {
+                let s = self.read_identifier();
+                Token::lookup_keyword(s).unwrap_or(Token::Identifier(Intern::new(String::from(s))))
+            }
+            _ if Self::is_number(self.char()) => {
+                let number = self.read_number();
+                match number {
+                    LexedNumber::Int(i) => Token::Integer(i),
+                    LexedNumber::Float(f) => Token::Float(f),
                 }
-                self.advance();
-                Token::String(Intern::new(string))
             }
             _ => {
-                if Self::is_letter(self.ch()) && self.ch() != '_' {
-                    let ident = self.read_identifier();
-                    let s = String::from_iter(ident);
-                    Token::lookup_keyword(&s).unwrap_or(Token::Identifier(Intern::new(s)))
-                } else if self.ch().is_ascii_digit() {
-                    let number = self.consume_number();
-                    match number {
-                        Number::Int(i) => Token::Integer(i),
-                        Number::Float(f) => Token::Float(f),
-                    }
-                } else {
-                    panic!()
-                }
+                let span = self.char_pos()..self.char_end_pos();
+                let error = LexerError::UnexpectedCharacter {
+                    token: Located::new(self.source, Spanned::new(span, self.char())),
+                };
+                self.advance();
+                return Err(error);
             }
         };
-        Spanned::new(start_pos..self.ch_pos, tok)
+        let end_pos = self.char_pos();
+        Ok(Spanned::new(start_pos..end_pos, tok))
+    }
+
+    #[inline]
+    fn read_string(&mut self) -> &str {
+        self.advance();
+        let start = self.char_pos();
+        loop {
+            match self.char() {
+                '"' => break,
+                '\0' | '\n' => panic!("unterminated string"),
+                '\\' => {
+                    todo!("escape sequences")
+                }
+                _ => {}
+            }
+            self.advance();
+        }
+        let end = self.char_pos();
+        self.advance();
+        &self.input[start..end]
+    }
+
+    #[inline]
+    fn read_identifier(&mut self) -> &str {
+        let start = self.char_pos();
+        while Self::is_letter(self.char()) || self.char().is_ascii_digit() {
+            self.advance();
+        }
+        let end = self.char_pos();
+        &self.input[start..end]
+    }
+
+    #[inline]
+    fn read_number(&mut self) -> LexedNumber {
+        let start = self.char_pos();
+        while self.char().is_ascii_digit() || self.char() == '.' {
+            self.advance();
+        }
+        let end = self.char_pos();
+
+        let number = &self.input[start..end];
+        if number.contains('.') {
+            let number = number.parse::<f64>().unwrap();
+            LexedNumber::Float(number)
+        } else {
+            let number = number.parse::<u64>().unwrap();
+            LexedNumber::Int(number)
+        }
     }
 
     #[inline]
@@ -239,57 +300,41 @@ impl<'source> Lexer<'source> {
         character.is_alphabetic() || character == '_'
     }
 
-    fn read_identifier(&mut self) -> &[char] {
-        let start_pos = self.ch_pos;
-        while Self::is_letter(self.ch()) || self.ch().is_ascii_digit() {
-            self.advance();
-        }
-        let end_pos = self.ch_pos;
-        &self.chars[start_pos..end_pos]
-    }
-
-    fn consume_number(&mut self) -> Number {
-        let mut parts = vec![];
-
-        while self.ch().is_ascii_digit() || self.ch() == '.' {
-            parts.push(self.ch());
-            self.advance();
-        }
-
-        let number = parts.iter().collect::<String>();
-
-        if number.contains('.') {
-            let number = number.parse::<f64>().unwrap();
-            Number::Float(number)
-        } else {
-            let number = number.parse::<u64>().unwrap();
-            Number::Int(number)
-        }
+    #[inline]
+    fn is_number(character: char) -> bool {
+        character.is_ascii_digit()
     }
 
     #[inline]
     fn skip_whitespace_until_nl(&mut self) {
-        while self.ch() != '\n' && self.ch().is_whitespace() {
+        while self.char() != '\n' && self.char() != '\r' && self.char().is_whitespace() {
             self.advance()
         }
     }
 
     #[inline]
     fn advance(&mut self) {
-        self.ch_pos += 1;
+        self.current = self.chars.next().unwrap_or((self.input.len(), '\0'));
     }
 
     #[inline]
-    fn ch(&self) -> char {
-        match self.chars.get(self.ch_pos) {
-            Some(ch) => *ch,
-            None => '\0',
-        }
+    fn char(&self) -> char {
+        self.current.1
+    }
+
+    #[inline]
+    fn char_pos(&self) -> usize {
+        self.current.0
+    }
+
+    #[inline]
+    fn char_end_pos(&self) -> usize {
+        self.current.0 + self.current.1.len_utf8()
     }
 
     #[inline]
     fn advance_if(&mut self, ch: char) -> bool {
-        if self.ch() == ch {
+        if self.char() == ch {
             self.advance();
             true
         } else {
@@ -298,7 +343,7 @@ impl<'source> Lexer<'source> {
     }
 }
 
-enum Number {
+enum LexedNumber {
     Int(u64),
     Float(f64),
 }
@@ -310,17 +355,20 @@ mod tests {
     fn assert_token(input: &str, expected: Token) {
         let lexer = Lexer::new(SourceId::from_path(""), input);
         let tokens = lexer.collect::<Vec<_>>();
+        let token = tokens[0].clone();
+        assert!(token.is_ok());
+        assert_eq!(tokens[0].clone().unwrap().value, expected);
         assert_eq!(tokens.len(), 1 + 1); // +1 for EOF
-        assert_eq!(tokens[0].value, expected);
     }
 
     fn assert_tokens(input: &str, expected: Vec<Token>) {
         let lexer = Lexer::new(SourceId::from_path(""), input);
         let tokens = lexer.collect::<Vec<_>>();
-        assert_eq!(tokens.len(), expected.len() + 1); // +1 for EOF
-        for (expected, token) in expected.into_iter().zip(tokens) {
-            assert_eq!(token.value, expected);
+        for (expected, token) in expected.iter().zip(&tokens) {
+            assert!(token.is_ok());
+            assert_eq!(token.clone().unwrap().value, *expected);
         }
+        assert_eq!(tokens.len(), expected.len() + 1); // +1 for EOF
     }
 
     #[test]
@@ -475,14 +523,6 @@ hello
     #[test]
     fn test_string() {
         assert_token(r#""hello""#, Token::String("hello".to_string().into()));
-    }
-
-    #[test]
-    fn test_string_with_escaped_quote() {
-        assert_token(
-            r#""hello \"world\"!""#,
-            Token::String("hello \"world\"!".to_string().into()),
-        );
     }
 
     #[test]

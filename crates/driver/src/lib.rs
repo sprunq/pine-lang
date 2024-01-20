@@ -1,6 +1,5 @@
 use base::{compile_context::CompileContext, source_id::SourceId};
 use messages::message::Message;
-use std::sync::mpsc::Sender;
 use syntax::{ast::Program, lexer::Lexer, parser::Parser};
 
 pub struct Compiler<'a> {
@@ -12,23 +11,32 @@ impl<'a> Compiler<'a> {
         Self { context }
     }
 
-    pub fn compile(&mut self, msg_sender: Sender<Message>) {
+    pub fn compile(&mut self) -> Result<(), Message> {
         let source_id = SourceId::from_path(&self.context.build_pkg);
         let file_content = self.context.file_cache.fetch(source_id).unwrap();
 
         let lexer = Lexer::new(source_id, file_content);
 
+        let start = std::time::Instant::now();
+        for t in lexer {
+            let _x = std::hint::black_box(t);
+        }
+        let end = std::time::Instant::now();
+        dbg!(end - start);
+
+        return Ok(());
+
         let parsed = match Parser::parse(lexer, source_id) {
             Ok(parsed) => parsed,
             Err(e) => {
-                msg_sender.send(e).expect("Failed to send message");
-                return;
+                return Ok(());
             }
         };
 
         if self.context.emit_irs {
             self.write_parsed_to_file(&parsed);
         }
+        Ok(())
     }
 
     fn write_parsed_to_file(&self, program: &Program) {
