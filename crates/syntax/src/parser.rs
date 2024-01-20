@@ -197,10 +197,11 @@ where
     }
 
     fn parse_block(&mut self) -> Result<Spanned<Block>, ParserError> {
+        todo!("Not finished");
+
         let mut stmts = Vec::new();
 
         let s = self.current.span.start;
-
         while self.current_v() == Token::NewLine {
             stmts.push(self.parse_stmt()?);
         }
@@ -219,7 +220,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::lexer::{self, Lexer};
+    use crate::lexer::Lexer;
     use base::source_id::SourceId;
     use lazy_static::lazy_static;
 
@@ -231,81 +232,81 @@ mod test {
         };
     }
 
-    fn parser(input: &str) -> Parser<lexer::Lexer<'_>> {
+    /// Assert snapshot with redactions
+    macro_rules! insta_assert {
+        ($parsed:expr) => {{
+            SETTINGS.bind(|| {
+                insta::assert_json_snapshot!($parsed);
+            });
+        }};
+    }
+
+    /// Read test file and parse it
+    macro_rules! from {
+        ($name:expr) => {{
+            parser(&read_test_file($name))
+        }};
+    }
+
+    fn read_test_file(s: &str) -> String {
+        let current_dir = std::env::current_dir().unwrap();
+        let path = current_dir
+            .join("src")
+            .join("test_inputs")
+            .join("parser")
+            .join(s)
+            .with_extension("txt");
+        let read_result = std::fs::read_to_string(&path);
+        assert!(read_result.is_ok(), "failed to read file: {:?}", path);
+        read_result.unwrap()
+    }
+
+    fn parser(input: &str) -> Parser<Lexer<'_>> {
         let tokens = Lexer::new(SourceId::from_path(""), input);
         Parser::new(tokens, "".into())
     }
 
     #[test]
     fn test_parse_identifier() {
-        let input = r#"hello_world"#;
-        let parsed = parser(input).parse_identifier();
-        SETTINGS.bind(|| {
-            insta::assert_json_snapshot!(parsed);
-        });
+        let parsed = from!("identifier").parse_identifier();
+        insta_assert!(parsed);
     }
 
     #[test]
     fn test_parse_identifier_fail() {
-        let input = r#"1.0 + hello_world"#;
-        let parsed = parser(input).parse_identifier();
-        SETTINGS.bind(|| {
-            insta::assert_json_snapshot!(parsed);
-        });
+        let parsed = from!("identifier_fail").parse_identifier();
+        insta_assert!(parsed);
     }
 
     #[test]
     fn test_parse_type() {
-        let input = r#"bool"#;
-        let parsed = parser(input).parse_type();
-        SETTINGS.bind(|| {
-            insta::assert_json_snapshot!(parsed);
-        });
+        let parsed = from!("type").parse_type();
+        insta_assert!(parsed);
     }
 
     #[test]
     fn test_parse_type_fail() {
-        let input = r#"1.0 + bool"#;
-        let parsed = parser(input).parse_type();
-        SETTINGS.bind(|| {
-            insta::assert_json_snapshot!(parsed);
-        });
-    }
-
-    #[test]
-    fn test_parse_typed_params() {
-        let input = r#"a : Alpha, b : u64"#;
-        let parsed = parser(input).parse_typed_params();
-        SETTINGS.bind(|| {
-            insta::assert_json_snapshot!(parsed);
-        });
+        let parsed = from!("type_fail").parse_type();
+        assert!(parsed.is_err());
+        insta_assert!(parsed);
     }
 
     #[test]
     fn test_parse_typed_param_multi() {
-        let input = r#"a : Alpha, b : u64, c : bool"#;
-        let parsed = parser(input).parse_typed_params();
-        SETTINGS.bind(|| {
-            insta::assert_json_snapshot!(parsed);
-        });
+        let parsed = from!("param_multi").parse_typed_params();
+        insta_assert!(parsed);
     }
 
     #[test]
     fn test_parse_typed_param_single() {
-        let input = r#"a : Alpha"#;
-        let parsed = parser(input).parse_typed_params();
-        SETTINGS.bind(|| {
-            insta::assert_json_snapshot!(parsed);
-        });
+        let parsed = from!("param_single").parse_typed_params();
+        insta_assert!(parsed);
     }
 
     #[test]
     fn test_parse_typed_param_fail() {
-        let input = r#"a : Alpha, b : u64, c : bool, d"#;
-        let parsed = parser(input).parse_typed_params();
+        let parsed = from!("param_fail").parse_typed_params();
         assert!(parsed.is_err());
-        SETTINGS.bind(|| {
-            insta::assert_json_snapshot!(parsed);
-        });
+        insta_assert!(parsed);
     }
 }
