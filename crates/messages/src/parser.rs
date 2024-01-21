@@ -1,7 +1,4 @@
-use base::{
-    located::{Located, Spanned},
-    source_id::SourceId,
-};
+use base::{located::Located, source_id::SourceId, spanned::Spanned};
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 
 #[derive(Debug, PartialEq, Clone, serde::Serialize)]

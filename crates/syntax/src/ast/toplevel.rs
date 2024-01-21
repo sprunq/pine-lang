@@ -4,7 +4,7 @@ use super::{
     stmt::{Block, TypedParam},
     TypeS,
 };
-use base::located::Spanned;
+use base::spanned::Spanned;
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]

@@ -5,7 +5,7 @@ pub mod toplevel;
 pub mod types;
 
 use self::{toplevel::TopLevelDeclaration, types::Type};
-use base::{located::Spanned, source_id::SourceId};
+use base::{source_id::SourceId, spanned::Spanned};
 use expr::Expr;
 use serde::Serialize;
 use stmt::Stmt;

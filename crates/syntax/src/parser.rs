@@ -9,7 +9,7 @@ use crate::{
     },
     token::Token,
 };
-use base::{located::Spanned, source_id::SourceId};
+use base::{source_id::SourceId, spanned::Spanned};
 use messages::{lexer::LexerError, message::Message, parser::ParserError};
 
 #[allow(dead_code)]

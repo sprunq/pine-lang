@@ -1,8 +1,5 @@
 use crate::token::Token;
-use base::{
-    located::{Located, Spanned},
-    source_id::SourceId,
-};
+use base::{located::Located, source_id::SourceId, spanned::Spanned};
 use internment::Intern;
 use messages::lexer::LexerError;
 use std::{cmp::Ordering, collections::VecDeque, str::CharIndices};

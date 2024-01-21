@@ -1,5 +1,5 @@
 use super::{expr::Identifier, impl_from_as_box, types::Type, ExprS, StmtS, TypeS};
-use base::located::Spanned;
+use base::spanned::Spanned;
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]
