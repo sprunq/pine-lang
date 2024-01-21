@@ -3,12 +3,16 @@ resolver = "2"
 members = ["crates/pinec"]
 
 [workspace.dependencies]
-serde = { version = "1.0.195", features = ["derive"] }
-codespan-reporting = "0.11.1"
+codespan-reporting = { version = "0.11.1" }
 internment = { version = "0.7.4" }
 derive_more = { version = "0.99.17", default-features = false }
+lazy_static = { version = "1.4.0" }
+serde = { version = "1.0.195", features = ["derive"] }
 insta = { version = "1.34.0" }
-lazy_static = "1.4.0"
+
+[profile.dev.package]
+insta.opt-level = 3
+similar.opt-level = 3
 
 [profile.release]
 debug = true

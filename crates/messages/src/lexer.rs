@@ -37,10 +37,10 @@ impl LexerError {
     pub fn labels(&self) -> Vec<codespan_reporting::diagnostic::Label<SourceId>> {
         match self {
             LexerError::UnexpectedCharacter { token } => {
-                vec![Label::primary(token.source, token.located.span.clone())]
+                vec![Label::primary(token.source, token.located.span)]
             }
             LexerError::IndentationNotMultipleFour { token, .. } => {
-                vec![Label::primary(token.source, token.located.span.clone())]
+                vec![Label::primary(token.source, token.located.span)]
             }
         }
     }

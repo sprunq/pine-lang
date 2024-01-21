@@ -147,7 +147,7 @@ where
     fn parse_identifier(&mut self) -> Result<Spanned<Identifier>, Message> {
         if let Token::Identifier(ident) = &self.current.value {
             let ident = ident.as_str().into();
-            let ident = self.current.with_new_value(ident);
+            let ident = self.current.from_new_value(ident);
             self.next()?;
             Ok(ident)
         } else {
@@ -209,7 +209,7 @@ where
             }
         };
         self.next()?;
-        Ok(self.current.with_new_value(ty))
+        Ok(self.current.from_new_value(ty))
     }
 
     fn parse_block(&mut self) -> Result<Spanned<Block>, Message> {

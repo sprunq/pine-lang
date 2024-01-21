@@ -1,42 +1,50 @@
-use std::{
-    fmt::{self, Display},
-    ops::Range,
-};
+use crate::text_span::TextSpan;
+use std::fmt::{self, Display};
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct Spanned<T> {
-    pub span: Range<usize>,
+    pub span: TextSpan,
     pub value: T,
 }
 
 impl<T> Spanned<T> {
-    pub fn new(span: Range<usize>, value: T) -> Self {
-        Self { span, value }
-    }
-
-    pub fn with_new_value<U>(&self, value: U) -> Spanned<U> {
-        Spanned {
-            span: self.span.clone(),
+    pub fn new<S>(span: S, value: T) -> Self
+    where
+        S: Into<TextSpan>,
+    {
+        Self {
+            span: span.into(),
             value,
         }
     }
-}
 
-impl<A> Spanned<A> {
     pub fn map_value<U, F>(self, f: F) -> Spanned<U>
     where
-        F: FnOnce(A) -> U,
+        F: FnOnce(T) -> U,
     {
         Spanned {
             span: self.span,
             value: f(self.value),
         }
     }
+
+    pub fn from_new_value<U>(&self, value: U) -> Spanned<U> {
+        Spanned {
+            span: self.span,
+            value,
+        }
+    }
 }
 
 impl Spanned<()> {
-    pub fn empty(span: Range<usize>) -> Self {
-        Self { span, value: () }
+    pub fn empty<S>(span: S) -> Self
+    where
+        S: Into<TextSpan>,
+    {
+        Self {
+            span: span.into(),
+            value: (),
+        }
     }
 }
 

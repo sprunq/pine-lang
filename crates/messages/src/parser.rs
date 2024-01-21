@@ -82,19 +82,16 @@ impl ParserError {
     pub fn labels(&self) -> Vec<Label<SourceId>> {
         match self {
             ParserError::UnexpectedEof { location } => {
-                vec![Label::primary(
-                    location.source,
-                    location.located.span.clone(),
-                )]
+                vec![Label::primary(location.source, location.located.span)]
             }
             ParserError::UnrecognizedToken {
                 found: token,
                 expected: _,
             } => {
-                vec![Label::primary(token.source, token.located.span.clone())]
+                vec![Label::primary(token.source, token.located.span)]
             }
             ParserError::ExpectedType { found } => {
-                vec![Label::primary(found.source, found.located.span.clone())]
+                vec![Label::primary(found.source, found.located.span)]
             }
         }
     }
