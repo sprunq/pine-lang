@@ -243,6 +243,7 @@ mod test {
     lazy_static! {
         static ref SETTINGS: insta::Settings = {
             let mut settings = insta::Settings::new();
+            settings.set_snapshot_path("test_outputs/parser");
             settings.add_redaction(".**.span", "");
             settings
         };
@@ -252,13 +253,13 @@ mod test {
     macro_rules! insta_assert {
         ($parsed:expr) => {{
             SETTINGS.bind(|| {
-                insta::assert_json_snapshot!($parsed);
+                insta::assert_ron_snapshot!($parsed);
             });
         }};
     }
 
     /// Read test file and parse it
-    macro_rules! from {
+    macro_rules! from_pine {
         ($name:expr) => {{
             parser(&read_test_file($name))
         }};
@@ -284,44 +285,44 @@ mod test {
 
     #[test]
     fn test_parse_identifier() {
-        let parsed = from!("identifier").parse_identifier();
+        let parsed = from_pine!("identifier").parse_identifier();
         insta_assert!(parsed);
     }
 
     #[test]
     fn test_parse_identifier_fail() {
-        let parsed = from!("identifier_fail").parse_identifier();
+        let parsed = from_pine!("identifier_fail").parse_identifier();
         insta_assert!(parsed);
     }
 
     #[test]
     fn test_parse_type() {
-        let parsed = from!("type").parse_type();
+        let parsed = from_pine!("type").parse_type();
         insta_assert!(parsed);
     }
 
     #[test]
     fn test_parse_type_fail() {
-        let parsed = from!("type_fail").parse_type();
+        let parsed = from_pine!("type_fail").parse_type();
         assert!(parsed.is_err());
         insta_assert!(parsed);
     }
 
     #[test]
     fn test_parse_typed_param_multi() {
-        let parsed = from!("param_multi").parse_typed_params();
+        let parsed = from_pine!("param_multi").parse_typed_params();
         insta_assert!(parsed);
     }
 
     #[test]
     fn test_parse_typed_param_single() {
-        let parsed = from!("param_single").parse_typed_params();
+        let parsed = from_pine!("param_single").parse_typed_params();
         insta_assert!(parsed);
     }
 
     #[test]
     fn test_parse_typed_param_fail() {
-        let parsed = from!("param_fail").parse_typed_params();
+        let parsed = from_pine!("param_fail").parse_typed_params();
         assert!(parsed.is_err());
         insta_assert!(parsed);
     }

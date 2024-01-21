@@ -1,0 +1,14 @@
+---
+source: crates/syntax/src/parser.rs
+expression: parsed
+---
+Err(Parse(UnrecognizedToken(
+  found: Located(
+    source: "",
+    located: Spanned(
+      span: "",
+      value: "EOF",
+    ),
+  ),
+  expected: ":",
+)))

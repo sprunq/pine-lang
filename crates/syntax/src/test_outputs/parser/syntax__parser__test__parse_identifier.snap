@@ -1,0 +1,10 @@
+---
+source: crates/syntax/src/parser.rs
+expression: parsed
+---
+Ok(Spanned(
+  span: "",
+  value: Identifier(
+    name: "hello_world",
+  ),
+))

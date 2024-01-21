@@ -1,0 +1,13 @@
+---
+source: crates/syntax/src/parser.rs
+expression: parsed
+---
+Err(Parse(ExpectedType(
+  found: Located(
+    source: "",
+    located: Spanned(
+      span: "",
+      value: "1",
+    ),
+  ),
+)))

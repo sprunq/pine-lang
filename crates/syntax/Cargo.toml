@@ -12,7 +12,7 @@ derive_more = { workspace = true, features = ["display"] }
 
 
 [dev-dependencies]
-insta = { workspace = true, features = ["redactions", "json"] }
+insta = { workspace = true, features = ["redactions", "ron"] }
 lazy_static = { workspace = true }
 
 [profile.dev.package]

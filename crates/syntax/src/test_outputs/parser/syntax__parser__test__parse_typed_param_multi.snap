@@ -1,0 +1,42 @@
+---
+source: crates/syntax/src/parser.rs
+expression: parsed
+---
+Ok([
+  TypedParam(
+    name: Spanned(
+      span: "",
+      value: Identifier(
+        name: "a",
+      ),
+    ),
+    ty: Spanned(
+      span: "",
+      value: Struct("Alpha"),
+    ),
+  ),
+  TypedParam(
+    name: Spanned(
+      span: "",
+      value: Identifier(
+        name: "b",
+      ),
+    ),
+    ty: Spanned(
+      span: "",
+      value: U64,
+    ),
+  ),
+  TypedParam(
+    name: Spanned(
+      span: "",
+      value: Identifier(
+        name: "c",
+      ),
+    ),
+    ty: Spanned(
+      span: "",
+      value: Bool,
+    ),
+  ),
+])

@@ -2,9 +2,7 @@
 source: crates/syntax/src/parser.rs
 expression: parsed
 ---
-{
-  "Ok": {
-    "span": "",
-    "value": "Bool"
-  }
-}
+Ok(Spanned(
+  span: "",
+  value: Bool,
+))
