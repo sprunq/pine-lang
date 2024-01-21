@@ -56,3 +56,5 @@ where
         write!(f, "{}", self.value)
     }
 }
+
+impl<T> Copy for Spanned<T> where T: Copy {}

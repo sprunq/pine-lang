@@ -14,3 +14,5 @@ impl<T> Located<T> {
         }
     }
 }
+
+impl<T> Copy for Located<T> where T: Copy {}

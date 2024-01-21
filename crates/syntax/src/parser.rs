@@ -57,7 +57,7 @@ where
 
     fn next(&mut self) -> Result<(), Message> {
         if self.peek_v() == Token::Eof {
-            self.current = self.peek.clone();
+            self.current = self.peek;
             return Ok(());
         }
         let new_peek = self.tokens.next();
@@ -72,7 +72,7 @@ where
             },
             None => Err(ParserError::new_unexpected_eof(
                 self.source_id,
-                self.peek.clone().map_value(|_| ()),
+                self.peek.map_value(|_| ()),
             )
             .into()),
         }
@@ -90,7 +90,7 @@ where
         if self.current.value != expected {
             return Err(ParserError::new_unrecognized_token(
                 self.source_id,
-                self.current.clone(),
+                self.current,
                 expected,
             )
             .into());
@@ -116,7 +116,7 @@ where
             Token::Type => self.parse_type_object().map(|e| e.map_value(|e| e.into())),
             _ => Err(ParserError::new_unrecognized_token(
                 self.source_id,
-                self.current.clone(),
+                self.current,
                 "top level declaration",
             )
             .into()),
@@ -151,12 +151,10 @@ where
             self.next()?;
             Ok(ident)
         } else {
-            Err(ParserError::new_unrecognized_token(
-                self.source_id,
-                self.current.clone(),
-                "identifier",
+            Err(
+                ParserError::new_unrecognized_token(self.source_id, self.current, "identifier")
+                    .into(),
             )
-            .into())
         }
     }
 
@@ -202,11 +200,7 @@ where
             Token::TyStr => Type::String,
             Token::Underscore => Type::Unit,
             Token::Identifier(ident) => Type::Struct(ident.as_str().into()),
-            _ => {
-                return Err(
-                    ParserError::new_expected_type(self.source_id, self.current.clone()).into(),
-                )
-            }
+            _ => return Err(ParserError::new_expected_type(self.source_id, self.current).into()),
         };
         self.next()?;
         Ok(self.current.from_new_value(ty))

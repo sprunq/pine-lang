@@ -7,7 +7,7 @@ use std::{
 /// `SourceId` is a wrapper around an interning data structure that represents
 /// a file's path in a more memory-efficient way.
 /// Can be copied without much overhead.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SourceId(Intern<Vec<String>>);
 
 impl SourceId {
